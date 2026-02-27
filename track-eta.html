@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperTruck — Driver Tracking Simulator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --panel: #161a21;
+      --border: #1e2330;
+      --accent: #00e5a0;
+      --accent2: #ff4d6a;
+      --accent3: #ffa733;
+      --blue: #3d9eff;
+      --text: #e4eaf4;
+      --muted: #4a5568;
+      --dim: #2d3448;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+
+    .logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--text);
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent2);
+    }
+
+    .live-dot.active {
+      animation: pulse-dot 1s infinite;
+      background: var(--accent);
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(0.7)
+      }
+    }
+
+    /* ── Main layout ── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left panel ── */
+    #panel {
+      width: 300px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #panel::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #panel::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    /* ── Right ETA panel ── */
+    #etaPanel {
+      width: 320px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+    }
+
+    .field select option {
+      background: var(--bg);
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--dim);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(0, 229, 160, 0.5);
+    }
+
+    .speed-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 30px;
+      text-align: right;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 6px;
+    }
+
+    .btn-start {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .btn-start:hover {
+      background: #00ffb3;
+    }
+
+    .btn-stop {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+      display: none;
+    }
+
+    .btn-stop:hover {
+      background: rgba(255, 77, 106, 0.1);
+    }
+
+    .btn-reset {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-reset:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    #statusCard {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.8;
+      color: var(--muted);
+      margin-bottom: 10px;
+      min-height: 42px;
+      transition: all 0.3s;
+    }
+
+    #statusCard.ok {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 229, 160, 0.05);
+    }
+
+    #statusCard.error {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(255, 77, 106, 0.05);
+    }
+
+    #statusCard.warn {
+      border-color: var(--accent3);
+      color: var(--accent3);
+      background: rgba(255, 167, 51, 0.05);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      font-family: 'Barlow Condensed', sans-serif;
+      color: var(--text);
+    }
+
+    .stat-value.green {
+      color: var(--accent);
+    }
+
+    .stat-value.red {
+      color: var(--accent2);
+    }
+
+    .stat-value.amber {
+      color: var(--accent3);
+    }
+
+    .stat-value.blue {
+      color: var(--blue);
+    }
+
+    .progress-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 8px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #00b377);
+      border-radius: 6px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* ── Ping log ── */
+    #logFeed {
+      flex: 1;
+      padding: 8px 12px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.6;
+      min-height: 0;
+    }
+
+    #logFeed::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    #logFeed::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 5px;
+      padding: 5px 7px;
+      border-radius: 5px;
+      border-left: 2px solid transparent;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .log-entry.ok {
+      border-left-color: var(--accent);
+      background: rgba(0, 229, 160, 0.04);
+    }
+
+    .log-entry.error {
+      border-left-color: var(--accent2);
+      background: rgba(255, 77, 106, 0.04);
+    }
+
+    .log-entry.warn {
+      border-left-color: var(--accent3);
+      background: rgba(255, 167, 51, 0.04);
+    }
+
+    .log-entry.info {
+      border-left-color: var(--blue);
+      background: rgba(61, 158, 255, 0.04);
+    }
+
+    .log-time {
+      color: var(--muted);
+      flex-shrink: 0;
+      font-size: 10px;
+    }
+
+    .log-msg {
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .log-msg .tag {
+      display: inline-block;
+      padding: 0 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      margin-right: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-ok {
+      background: rgba(0, 229, 160, 0.15);
+      color: var(--accent);
+    }
+
+    .tag-err {
+      background: rgba(255, 77, 106, 0.15);
+      color: var(--accent2);
+    }
+
+    .tag-warn {
+      background: rgba(255, 167, 51, 0.15);
+      color: var(--accent3);
+    }
+
+    .tag-info {
+      background: rgba(61, 158, 255, 0.15);
+      color: var(--blue);
+    }
+
+    .tag-eta {
+      background: rgba(255, 167, 51, 0.2);
+      color: #ffcc44;
+    }
+
+    /* ── Map ── */
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #e8e8e8;
+    }
+
+    #mapHint {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 12, 16, 0.85);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      color: var(--muted);
+      font-size: 12px;
+      padding: 10px 18px;
+      border-radius: 20px;
+      z-index: 999;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #mapHint span {
+      color: var(--accent);
+    }
+
+    /* ── ETA Panel Styles ── */
+    .eta-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .eta-poll-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .eta-poll-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+
+    .eta-poll-dot.polling {
+      background: var(--accent3);
+      animation: pulse-dot 0.8s infinite;
+    }
+
+    .eta-poll-dot.ok {
+      background: var(--accent);
+    }
+
+    .eta-poll-dot.error {
+      background: var(--accent2);
+    }
+
+    .eta-current {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eta-big {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .eta-big.risk {
+      color: var(--accent2);
+    }
+
+    .eta-big.warn {
+      color: var(--accent3);
+    }
+
+    .eta-meta {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .eta-meta span {
+      color: var(--text);
+    }
+
+    .eta-delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .eta-delta.early {
+      background: rgba(0, 229, 160, 0.15);
+      color: var(--accent);
+    }
+
+    .eta-delta.late {
+      background: rgba(255, 77, 106, 0.15);
+      color: var(--accent2);
+    }
+
+    .eta-delta.ok {
+      background: rgba(61, 158, 255, 0.15);
+      color: var(--blue);
+    }
+
+    /* ETA snapshot timeline */
+    #etaTimeline {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+      min-height: 0;
+    }
+
+    #etaTimeline::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    #etaTimeline::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+
+    .eta-row {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(30, 35, 48, 0.6);
+      transition: background 0.2s;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .eta-row:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .eta-row.new-entry {
+      background: rgba(0, 229, 160, 0.06);
+    }
+
+    .eta-row.risk-entry {
+      background: rgba(255, 77, 106, 0.04);
+    }
+
+    .eta-row-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .dot-initial {
+      background: var(--blue);
+    }
+
+    .dot-traffic {
+      background: var(--accent3);
+    }
+
+    .dot-periodic {
+      background: var(--muted);
+    }
+
+    .dot-risk {
+      background: var(--accent2);
+      box-shadow: 0 0 6px var(--accent2);
+    }
+
+    .dot-manual {
+      background: #c084fc;
+    }
+
+    .dot-appt {
+      background: var(--accent);
+    }
+
+    .eta-row-body {
+      min-width: 0;
+    }
+
+    .eta-row-reason {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .eta-row-time {
+      font-size: 11px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+
+    .eta-row-prev {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .eta-row-when {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .reason-INITIAL_SET {
+      color: var(--blue);
+    }
+
+    .reason-TRAFFIC {
+      color: var(--accent3);
+    }
+
+    .reason-PERIODIC {
+      color: var(--muted);
+    }
+
+    .reason-RISK_STATE_CHANGED {
+      color: var(--accent2);
+    }
+
+    .reason-MANUAL_OVERRIDE {
+      color: #c084fc;
+    }
+
+    .reason-APPOINTMENT_CHANGED {
+      color: var(--accent);
+    }
+
+    /* ── Alert toast ── */
+    #alertContainer {
+      position: fixed;
+      top: 60px;
+      right: 340px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      max-width: 320px;
+    }
+
+    .alert-toast {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 12px 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      border-left: 3px solid var(--accent);
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 4.7s forwards;
+      pointer-events: auto;
+    }
+
+    .alert-toast.risk {
+      border-left-color: var(--accent2);
+    }
+
+    .alert-toast.warn {
+      border-left-color: var(--accent3);
+    }
+
+    .alert-toast.info {
+      border-left-color: var(--blue);
+    }
+
+    .alert-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .alert-body {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes toastOut {
+      from {
+        opacity: 1
+      }
+
+      to {
+        opacity: 0
+      }
+    }
+
+    .hint-text {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="topbar">
+    <div class="logo">SUPER<span>TRUCK</span> <span style="color:var(--muted);font-size:14px;font-weight:400">//
+        TRACKING SIM</span></div>
+    <div class="topbar-right">
+      <div style="font-size:10px;color:var(--muted)">ETA API: <span id="etaApiStatus"
+          style="color:var(--muted)">IDLE</span></div>
+      <div class="live-badge">
+        <div class="live-dot" id="liveDot"></div>
+        <span id="liveLabel">IDLE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert toasts -->
+  <div id="alertContainer"></div>
+
+  <div id="main">
+
+    <!-- Left panel: config + controls + ping log -->
+    <div id="panel">
+      <div class="section">
+        <div class="section-title">Configuration</div>
+        <div class="field"><label>Location API</label><input type="text" id="apiUrl"
+            value="http://localhost:3006/api/v1/driver-track/location"></div>
+        <div class="field"><label>ETA API Base</label><input type="text" id="etaApiBase"
+            value="http://localhost:3006/api/v1/driver-track/eta"></div>
+        <div class="field"><label>x-tenant-id</label><input type="text" id="tenantId"
+            value="58e06c32-fcf4-482e-965e-d812b6f92d28"></div>
+        <div class="field"><label>Authorization Token</label><input type="text" id="authToken"
+            placeholder="Bearer eyJ..."
+            value="Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjM1NzgwOTQyNTA5Mzc1NDg4MyIsInR5cCI6IkpXVCJ9.eyJhbXIiOlsicHdkIl0sImF0X2hhc2giOiJ0aFFIZGxfclNSbkhVREt6S18zMmx3IiwiYXVkIjpbIjM1NzgxNDU5OTE1MzY4MDM4NyIsIjM1ODM4MzYxMjU5NDI5MDY5MSIsIjM1NzgxNDI5NDk5OTQ2NTk4NyJdLCJhdXRoX3RpbWUiOjE3NzIxNjUyNjMsImF6cCI6IjM1NzgxNDU5OTE1MzY4MDM4NyIsImNsaWVudF9pZCI6IjM1NzgxNDU5OTE1MzY4MDM4NyIsImVtYWlsIjoid3VuaWZyYWJldWdhLTgzMTJAeW9wbWFpbC5jb20iLCJleHAiOjE3NzIyMDg0NzYsImZhbWlseV9uYW1lIjoiVXNlciIsImdpdmVuX25hbWUiOiJ3dW5pZnJhYmV1Z2EtODMxMiIsImlhdCI6MTc3MjE2NTI2NiwiaXNzIjoiaHR0cHM6Ly96aXRhZGVsLnN1cGVydHJ1Y2suYWkiLCJsb2NhbGUiOiJlbiIsIm5hbWUiOiJ3dW5pZnJhYmV1Z2EtODMxMiBVc2VyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoid3VuaWZyYWJldWdhLTgzMTJAeW9wbWFpbC5jb20iLCJzaWQiOiIzNjE4MzI5ODg4NDI5MTc4OTIiLCJzdWIiOiIzMjMiLCJ1cGRhdGVkX2F0IjoxNzcwMTA3MjMwLCJ1cm46eml0YWRlbDppYW06b3JnOnByb2plY3Q6MzU3ODE0Mjk0OTk5NDY1OTg3OnJvbGVzIjp7ImRyaXZlciI6eyIzNTc4MDk0MjM0MzI4NzYwMzUiOiJzdXBlcnRydWNrLnppdGFkZWwuc3VwZXJ0cnVjay5haSJ9fSwidXJuOnppdGFkZWw6aWFtOm9yZzpwcm9qZWN0OnJvbGVzIjp7ImRyaXZlciI6eyIzNTc4MDk0MjM0MzI4NzYwMzUiOiJzdXBlcnRydWNrLnppdGFkZWwuc3VwZXJ0cnVjay5haSJ9fX0.cWoSPzQ4EqD6pdL6ouY4xa_EeNJu0jih-BqyMwIn5j-EShcMR0tKXXkXjEKTc8scSgoddxENYtM1VKmkf5L49nAWJAI_P1zz3U-bIZl7XpfwEPcd6B3CI8wneT5fBnp70FU6LIc_5hFwXlitbvWTsz-2RGYgPUL7cjBZfZEY_uzXFBAXrGVUrJAXOacl5sLDG20m0L5BelZssfrT9q774Q-sD-bEDRJ1x2qH6KJaArNW7MaDHd0EtV_11cIpcmxx35VAuQyoLx20-b70pwGyQkQBAksJwh1lWogipQ4i4g8AcokOo71XO9DsmHubrUeUIs4oao7HgvLz3WBi4nkTNg">
+        </div>
+        <div class="field"><label>Trip ID</label><input type="text" id="tripId"
+            value="b728b1d8-ad2c-437a-8c54-c5a2f4b0f31e"></div>
+        <div class="field"><label>Stop ID</label><input type="text" id="stopId"
+            value="c554bb91-53d3-4b86-811d-26860ca341ed"></div>
+        <div class="field"><label>Appointment Time (Local)</label><input type="datetime-local" id="localAppointment">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Simulation</div>
+        <div class="field">
+          <label>Ping Interval</label>
+          <select id="intervalMins">
+            <option value="0.17">10 Seconds (Dev)</option>
+            <option value="0.5">30 Seconds (Fast Test)</option>
+            <option value="1">1 Minute</option>
+            <option value="5">5 Minutes</option>
+            <option value="10" selected>10 Minutes (Production)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>ETA Poll Interval</label>
+          <select id="etaPollInterval">
+            <option value="5000">5 Seconds</option>
+            <option value="10000" selected>10 Seconds</option>
+            <option value="30000">30 Seconds</option>
+            <option value="60000">1 Minute</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Driver Speed Multiplier</label>
+          <div class="slider-row">
+            <input type="range" id="simSpeed" min="1" max="100" value="10">
+            <span class="speed-val" id="speedLabel">10x</span>
+          </div>
+          <div class="hint-text">Higher = driver moves faster on map</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Status</div>
+        <div id="statusCard">Click map to place <span style="color:var(--accent)">Start</span> then <span
+            style="color:var(--accent2)">Stop</span> markers</div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Progress</div>
+            <div class="stat-value blue" id="statProgress">0%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Pings Sent</div>
+            <div class="stat-value green" id="statPings">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">ETA</div>
+            <div class="stat-value amber" id="statEta">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Speed</div>
+            <div class="stat-value" id="statSpeed">— km/h</div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-start" id="startBtn" onclick="startTracking()">▶ Start Simulation</button>
+          <button class="btn btn-stop" id="stopBtn" onclick="stopTracking()">■ Stop Simulation</button>
+          <button class="btn" id="haltBtn" onclick="toggleHalt()"
+            style="background:transparent;color:var(--accent3);border:1px solid var(--accent3);display:none;">⏸ Halt
+            Truck</button>
+          <button class="btn btn-reset" onclick="resetAll()">↺ Reset Markers</button>
+        </div>
+      </div>
+
+      <div
+        style="padding:10px 16px 4px;font-family:'Barlow Condensed';font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);">
+        PING LOG</div>
+      <div id="logFeed" style="max-height:220px;"></div>
+    </div>
+
+    <!-- Map -->
+    <div style="flex:1;position:relative;min-width:0;min-height:0;">
+      <div id="map" style="position:absolute;inset:0;"></div>
+      <div id="mapHint">Click map → set <span>① Start</span> then <span>② Stop</span> marker</div>
+    </div>
+
+    <!-- Right panel: ETA snapshots -->
+    <div id="etaPanel">
+      <div class="eta-header">
+        <div>
+          <div class="section-title" style="margin-bottom:0">ETA SNAPSHOTS</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px" id="etaSnapshotCount">No data yet</div>
+        </div>
+        <div class="eta-poll-badge">
+          <div class="eta-poll-dot" id="pollDot"></div>
+          <span id="pollStatus">OFF</span>
+        </div>
+      </div>
+
+      <!-- Current ETA summary -->
+      <div class="eta-current">
+        <div id="etaBigDisplay" class="eta-big">— : —</div>
+        <div style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+          <span id="etaDeltaBadge" class="eta-delta ok">—</span>
+          <span id="etaRiskBadge" style="font-size:10px;color:var(--muted)">vs appointment</span>
+        </div>
+        <div class="eta-meta">
+          Appt: <span id="metaAppt">—</span><br>
+          Revised ETA: <span id="metaRevised">—</span><br>
+          Previous ETA: <span id="metaPrev">—</span><br>
+          Reason: <span id="metaReason">—</span><br>
+          Updated by: <span id="metaUpdatedBy">—</span>
+        </div>
+      </div>
+
+      <!-- Timeline of all snapshots -->
+      <div
+        style="padding:8px 16px 6px;font-family:'Barlow Condensed';font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);border-bottom:1px solid var(--border);">
+        SNAPSHOT HISTORY
+      </div>
+      <div id="etaTimeline"></div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // ─── Sim State ────────────────────────────────────────────────
+    let startMarker, stopMarker, driverMarker, routeLine;
+    let simulationInterval, dataInterval, etaPollInterval;
+    let progress = 0, isSimulating = false, pingCount = 0, markerStep = 0;
+    let isTruckHalted = false;
+    let routeCoords = [], routeTick = 0, totalRouteDist = 0;
+
+    // ─── ETA State ────────────────────────────────────────────────
+    let knownEtaIds = new Set();   // IDs we've already seen
+    let latestEtaData = null;        // most recent snapshot object
+    let etaPollingActive = false;
+
+    // ─── Map ──────────────────────────────────────────────────────
+    const map = L.map('map', { zoomControl: false }).setView([27.6710, 85.3120], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    setTimeout(() => map.invalidateSize(), 200);
+
+    // ─── Icons ────────────────────────────────────────────────────
+    const mkIcon = (color, size, label) => L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:${size}px;height:${size}px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 12px ${color}88;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(45deg);font-size:${Math.floor(size * 0.35)}px;font-weight:800;color:rgba(0,0,0,0.8);font-family:'Barlow Condensed',sans-serif;">${label}</div>
+  </div>`,
+      iconSize: [size, size], iconAnchor: [size / 2, size], popupAnchor: [0, -size],
+    });
+
+    const driverIcon = L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:28px;height:28px;">
+    <div style="width:28px;height:28px;background:#3d9eff;border-radius:50%;border:3px solid white;box-shadow:0 0 0 3px rgba(61,158,255,0.3),0 4px 16px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:13px;">🚛</div>
+    <div style="position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(61,158,255,0.4);animation:driverPulse 2s infinite;"></div>
+  </div>
+  <style>@keyframes driverPulse{0%{transform:scale(1);opacity:0.8}100%{transform:scale(1.8);opacity:0}}</style>`,
+      iconSize: [28, 28], iconAnchor: [14, 14],
+    });
+
+    // ─── Map click ────────────────────────────────────────────────
+    map.on('click', (e) => {
+      if (isSimulating) { addLog('warn', 'Stop simulation before moving markers'); return; }
+      if (markerStep === 0) {
+        startMarker = L.marker(e.latlng, { icon: mkIcon('#00e5a0', 30, 'S'), draggable: true }).addTo(map).bindPopup('<b style="color:#00e5a0">START</b>');
+        startMarker.on('drag', updateRoute);
+        markerStep = 1;
+        updateHint('Now click to place <span>② Stop</span> (delivery) marker');
+        addLog('info', '📍 Start marker placed');
+      } else if (markerStep === 1) {
+        stopMarker = L.marker(e.latlng, { icon: mkIcon('#ff4d6a', 30, 'D'), draggable: true }).addTo(map).bindPopup('<b style="color:#ff4d6a">DELIVERY</b>');
+        stopMarker.on('drag', updateRoute);
+        markerStep = 2;
+        updateRoute();
+        addLog('ok', '📍 Stop marker placed — fetching road route...');
+      }
+    });
+
+    async function updateRoute() {
+      if (!startMarker || !stopMarker) return;
+      const s = startMarker.getLatLng(), e = stopMarker.getLatLng();
+      if (routeLine) { routeLine.setLatLngs([s, e]); }
+      else { routeLine = L.polyline([s, e], { color: '#3d9eff', weight: 3, dashArray: '8,12', opacity: 0.4 }).addTo(map); }
+      map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+      updateHint('⏳ Fetching road route...');
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${s.lng},${s.lat};${e.lng},${e.lat}?overview=full&geometries=geojson&steps=false`;
+        const data = await fetch(url).then(r => r.json());
+        if (data.code !== 'Ok' || !data.routes?.length) throw new Error('No route');
+        const route = data.routes[0];
+        totalRouteDist = route.distance / 1000;
+        routeCoords = route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline(routeCoords, { color: '#3d9eff', weight: 4, opacity: 0.75 }).addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+        addLog('ok', `Road route loaded — ${totalRouteDist.toFixed(1)}km | ${routeCoords.length} waypoints`);
+        updateHint('Markers set. Press <span>▶ Start</span> to begin');
+      } catch (err) {
+        routeCoords = [s, e];
+        totalRouteDist = haversineKm(s.lat, s.lng, e.lat, e.lng);
+        addLog('warn', `OSRM unavailable — straight line fallback`);
+        updateHint('Markers set. Press <span>▶ Start</span> (straight line fallback)');
+      }
+      routeTick = 0;
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────
+    function haversineKm(lat1, lng1, lat2, lng2) {
+      const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    function calcHeading(a, b) {
+      const la1 = a.lat * Math.PI / 180, lo1 = a.lng * Math.PI / 180, la2 = b.lat * Math.PI / 180, lo2 = b.lng * Math.PI / 180, dlo = lo2 - lo1;
+      const y = Math.sin(dlo) * Math.cos(la2), x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dlo);
+      return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+    }
+    function fmtTime(d) { return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+    function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    function fmtEta(d) { const diff = Math.round((new Date(d) - Date.now()) / 60000); if (diff <= 0) return 'NOW'; if (diff < 60) return `${diff}m`; return `${Math.floor(diff / 60)}h ${diff % 60}m`; }
+    function updateHint(html) { document.getElementById('mapHint').innerHTML = html; }
+    function getHeaders() {
+      return { 'Content-Type': 'application/json', 'x-tenant-id': document.getElementById('tenantId').value, 'Authorization': document.getElementById('authToken').value };
+    }
+
+    // ─── Log feed ─────────────────────────────────────────────────
+    function addLog(type, msg) {
+      const feed = document.getElementById('logFeed');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const tagMap = { ok: 'OK', error: 'ERR', warn: 'WARN', info: 'INFO', eta: 'ETA' };
+      const tagClass = type === 'ok' ? 'ok' : type === 'error' ? 'err' : type === 'warn' ? 'warn' : type === 'eta' ? 'eta' : 'info';
+      entry.innerHTML = `<span class="log-time">${fmtTime(new Date())}</span><span class="log-msg"><span class="tag tag-${tagClass}">${tagMap[type] || 'INFO'}</span>${msg}</span>`;
+      feed.insertBefore(entry, feed.firstChild);
+      while (feed.children.length > 100) feed.removeChild(feed.lastChild);
+    }
+
+    function setStatus(type, html) { const el = document.getElementById('statusCard'); el.className = type; el.innerHTML = html; }
+
+    // ─── Toast alerts ─────────────────────────────────────────────
+    function showAlert(type, title, body) {
+      const container = document.getElementById('alertContainer');
+      const toast = document.createElement('div');
+      toast.className = `alert-toast ${type}`;
+      toast.innerHTML = `<div class="alert-title">${title}</div><div class="alert-body">${body}</div>`;
+      container.appendChild(toast);
+      setTimeout(() => { try { container.removeChild(toast); } catch (_) { } }, 5000);
+    }
+
+    // ─── ETA Panel rendering ──────────────────────────────────────
+    function dotClass(reason) {
+      const map = { INITIAL_SET: 'dot-initial', TRAFFIC: 'dot-traffic', PERIODIC: 'dot-periodic', RISK_STATE_CHANGED: 'dot-risk', MANUAL_OVERRIDE: 'dot-manual', APPOINTMENT_CHANGED: 'dot-appt' };
+      return map[reason] || 'dot-periodic';
+    }
+
+    function renderEtaSummary(snap) {
+      const big = document.getElementById('etaBigDisplay');
+      const delta = document.getElementById('etaDeltaBadge');
+      const risk = document.getElementById('etaRiskBadge');
+      const revised = new Date(snap.revisedEta);
+      const dm = parseInt(snap.deltaMinutes);
+
+      // Big time display
+      big.textContent = revised.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      big.className = 'eta-big' + (snap.isAtRisk ? ' risk' : dm > 15 ? ' warn' : '');
+
+      // Delta badge
+      if (dm > 0) {
+        delta.className = 'eta-delta late';
+        delta.textContent = `+${dm} min LATE`;
+      } else if (dm < 0) {
+        delta.className = 'eta-delta early';
+        delta.textContent = `${dm} min EARLY`;
+      } else {
+        delta.className = 'eta-delta ok';
+        delta.textContent = `ON TIME`;
+      }
+
+      risk.textContent = snap.isAtRisk ? '⚠ AT RISK' : 'vs appointment';
+      risk.style.color = snap.isAtRisk ? 'var(--accent2)' : 'var(--muted)';
+
+      document.getElementById('metaAppt').textContent = fmtDateTime(snap.appointmentTime);
+      document.getElementById('metaRevised').textContent = fmtDateTime(snap.revisedEta);
+      document.getElementById('metaPrev').textContent = snap.previousEta ? fmtDateTime(snap.previousEta) : 'N/A';
+      document.getElementById('metaReason').textContent = snap.reason || '—';
+      document.getElementById('metaUpdatedBy').textContent = snap.updatedBy || '—';
+    }
+
+    function prependEtaRow(snap, isNew) {
+      const timeline = document.getElementById('etaTimeline');
+      const row = document.createElement('div');
+      const dm = parseInt(snap.deltaMinutes);
+      const isRisk = snap.isAtRisk || snap.reason === 'RISK_STATE_CHANGED';
+
+      row.className = `eta-row${isNew ? ' new-entry' : ''}${isRisk ? ' risk-entry' : ''}`;
+      row.innerHTML = `
+    <div class="eta-row-dot ${dotClass(snap.reason)}" style="margin-top:3px"></div>
+    <div class="eta-row-body">
+      <div class="eta-row-reason reason-${snap.reason}">${snap.reason || 'UNKNOWN'}</div>
+      <div class="eta-row-time">${fmtDateTime(snap.revisedEta)}</div>
+      <div class="eta-row-prev">
+        ${snap.previousEta ? `← ${fmtDateTime(snap.previousEta)}` : 'First snapshot'}
+        &nbsp;•&nbsp;
+        <span style="color:${dm > 30 ? 'var(--accent2)' : dm > 0 ? 'var(--accent3)' : 'var(--accent)'}">${dm > 0 ? '+' : ''}${dm}min</span>
+        ${snap.isAtRisk ? ' <span style="color:var(--accent2)">⚠ RISK</span>' : ''}
+        ${snap.triggeredIssueLog ? ' <span style="color:#c084fc">📋 Issue</span>' : ''}
+      </div>
+    </div>
+    <div class="eta-row-when">${fmtTime(snap.createdAt)}</div>
+  `;
+      timeline.insertBefore(row, timeline.firstChild);
+    }
+
+    // ─── ETA API polling ──────────────────────────────────────────
+    async function pollEtaSnapshots() {
+      const tripId = document.getElementById('tripId').value;
+      const stopId = document.getElementById('stopId').value;
+      const base = document.getElementById('etaApiBase').value;
+      const url = `${base}/${tripId}/${stopId}`;
+      const pollDot = document.getElementById('pollDot');
+      const pollSt = document.getElementById('pollStatus');
+
+      pollDot.className = 'eta-poll-dot polling';
+      pollSt.textContent = 'POLLING';
+
+      try {
+        const res = await fetch(url, { headers: getHeaders() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // Support array or { data: [] } envelope
+        const snapshots = Array.isArray(data) ? data : (data.data || data.snapshots || [data]);
+
+        if (!snapshots.length) {
+          pollDot.className = 'eta-poll-dot ok';
+          pollSt.textContent = 'OK (0)';
+          return;
+        }
+
+        // Sort by createdAt ascending so newest is last
+        snapshots.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        let newCount = 0;
+        for (const snap of snapshots) {
+          if (!knownEtaIds.has(snap.id)) {
+            knownEtaIds.add(snap.id);
+            newCount++;
+            prependEtaRow(snap, true);
+            latestEtaData = snap;
+
+            // Fire alerts for interesting events
+            const dm = parseInt(snap.deltaMinutes);
+            if (snap.reason === 'RISK_STATE_CHANGED') {
+              if (dm > 0) {
+                showAlert('risk', '⚠ ETA AT RISK', `Driver is now ${dm} min behind appointment.\nETA: ${fmtDateTime(snap.revisedEta)}`);
+                addLog('warn', `ETA RISK_STATE_CHANGED — driver ${dm}min late | ETA ${fmtDateTime(snap.revisedEta)}`);
+              } else {
+                showAlert('ok', '✅ ETA Recovered', `Driver is now back on schedule.\nETA: ${fmtDateTime(snap.revisedEta)}`);
+                addLog('ok', `ETA RISK_STATE_CHANGED — back on track | ETA ${fmtDateTime(snap.revisedEta)}`);
+              }
+            } else if (snap.reason === 'TRAFFIC' && Math.abs(dm - (latestEtaData?.deltaMinutes || 0)) >= 10) {
+              addLog('eta', `ETA shift (TRAFFIC) — ${dm > 0 ? '+' : ''}${dm}min | ${fmtDateTime(snap.revisedEta)}`);
+            } else if (snap.reason === 'INITIAL_SET') {
+              showAlert('info', '📍 ETA Initialized', `First snapshot recorded.\nETA: ${fmtDateTime(snap.revisedEta)} (${dm > 0 ? '+' : ''}${dm}min)`);
+              addLog('info', `ETA initialized — ${fmtDateTime(snap.revisedEta)} | ${dm}min vs appt`);
+            }
+            if (snap.triggeredIssueLog) {
+              showAlert('risk', '📋 Issue Logged', `TrackingLog created for this ETA.\nReason: ${snap.reason} | ${dm}min late`);
+              addLog('warn', `Issue log triggered — trackingLogId: ${snap.trackingLogId || 'N/A'}`);
+            }
+          }
+        }
+
+        // Always update summary with latest
+        if (snapshots.length) renderEtaSummary(snapshots[snapshots.length - 1]);
+
+        document.getElementById('etaSnapshotCount').textContent = `${knownEtaIds.size} snapshot${knownEtaIds.size !== 1 ? 's' : ''}${newCount ? ' (+' + newCount + ' new)' : ''}`;
+        document.getElementById('etaApiStatus').textContent = 'LIVE';
+        document.getElementById('etaApiStatus').style.color = 'var(--accent)';
+
+        pollDot.className = 'eta-poll-dot ok';
+        pollSt.textContent = `OK (${knownEtaIds.size})`;
+
+      } catch (err) {
+        pollDot.className = 'eta-poll-dot error';
+        pollSt.textContent = 'ERR';
+        document.getElementById('etaApiStatus').textContent = 'ERROR';
+        document.getElementById('etaApiStatus').style.color = 'var(--accent2)';
+        addLog('error', `ETA poll failed: ${err.message}`);
+      }
+    }
+
+    function startEtaPolling() {
+      if (etaPollingActive) return;
+      etaPollingActive = true;
+      pollEtaSnapshots();
+      const interval = parseInt(document.getElementById('etaPollInterval').value);
+      etaPollInterval = setInterval(pollEtaSnapshots, interval);
+      addLog('info', `ETA polling started — every ${interval / 1000}s`);
+    }
+
+    function stopEtaPolling() {
+      clearInterval(etaPollInterval);
+      etaPollingActive = false;
+      document.getElementById('pollDot').className = 'eta-poll-dot';
+      document.getElementById('pollStatus').textContent = 'OFF';
+    }
+
+    // ─── Send ping ────────────────────────────────────────────────
+    async function sendPing() {
+      if (!driverMarker || !stopMarker || !routeCoords.length) return;
+      const pos = driverMarker.getLatLng();
+      const stop = stopMarker.getLatLng();
+      const apptISO = new Date(document.getElementById('localAppointment').value).toISOString();
+      const nextWpt = routeCoords[Math.min(routeTick + 1, routeCoords.length - 1)];
+      const heading = Math.round(calcHeading(pos, nextWpt));
+      const remaining = routeCoords.slice(routeTick);
+      let distRemaining = 0;
+      for (let i = 0; i < remaining.length - 1; i++) distRemaining += haversineKm(remaining[i].lat, remaining[i].lng, remaining[i + 1].lat, remaining[i + 1].lng);
+      const speedKmh = 25 + Math.random() * 15;
+      const travelMins = distRemaining > 0 ? (distRemaining / speedKmh) * 60 : 0;
+      const etaDate = new Date(Date.now() + travelMins * 60000);
+
+      const payload = {
+        tripId: document.getElementById('tripId').value,
+        lat: pos.lat,
+        lng: pos.lng,
+        speedKmh: Math.round(speedKmh * 10) / 10,
+        heading,
+        etaSource: 'GPS_AUTO',
+        nextStop: {
+          stopId: document.getElementById('stopId').value,
+          lat: stop.lat,
+          lng: stop.lng,
+          address: "Patan Durbar Square, Lalitpur",
+          appointmentTime: apptISO,
+          type: 'delivery',
+        },
+      };
+
+      document.getElementById('statSpeed').textContent = `${payload.speedKmh} km/h`;
+      document.getElementById('statEta').textContent = fmtEta(etaDate);
+
+      try {
+        const res = await fetch(document.getElementById('apiUrl').value, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
+        pingCount++;
+        document.getElementById('statPings').textContent = pingCount;
+        const resText = await res.text();
+        let resJson; try { resJson = JSON.parse(resText); } catch (_) { }
+        if (res.ok) {
+          setStatus('ok', `✅ Ping #${pingCount} | ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
+          addLog('ok', `Ping #${pingCount} → ${res.status} | lat:${pos.lat.toFixed(4)} | ETA ${fmtEta(etaDate)} | ${distRemaining.toFixed(1)}km`);
+        } else {
+          setStatus('error', `⚠️ HTTP ${res.status} — ${resJson?.message || resText?.slice(0, 80)}`);
+          addLog('error', `Ping #${pingCount} → HTTP ${res.status}: ${resJson?.message || resText?.slice(0, 60)}`);
+        }
+      } catch (err) {
+        setStatus('error', `❌ Network error: ${err.message}`);
+        addLog('error', `Network error: ${err.message}`);
+      }
+    }
+
+    // ─── Simulation tick ──────────────────────────────────────────
+    function tickSimulation() {
+      if (!routeCoords.length) return;
+      if (isTruckHalted) return;
+      const steps = Math.max(1, Math.floor(parseInt(document.getElementById('simSpeed').value) / 10));
+      routeTick += steps;
+      if (routeTick >= routeCoords.length - 1) {
+        routeTick = routeCoords.length - 1;
+        if (driverMarker) driverMarker.setLatLng(routeCoords[routeTick]);
+        stopTracking();
+        setStatus('ok', '🏁 Driver arrived — simulation complete');
+        addLog('ok', '🏁 Arrived at destination');
+        document.getElementById('statProgress').textContent = '100%';
+        document.getElementById('progressBar').style.width = '100%';
+        return;
+      }
+      const pos = routeCoords[routeTick];
+      if (!driverMarker) driverMarker = L.marker(pos, { icon: driverIcon }).addTo(map);
+      else driverMarker.setLatLng(pos);
+      const pct = Math.round((routeTick / (routeCoords.length - 1)) * 100);
+      progress = routeTick / (routeCoords.length - 1);
+      document.getElementById('statProgress').textContent = `${pct}%`;
+      document.getElementById('progressBar').style.width = `${pct}%`;
+    }
+
+    // ─── Start / Stop / Reset ─────────────────────────────────────
+    function startTracking() {
+      if (markerStep < 2) { addLog('warn', 'Place both markers first'); setStatus('warn', '⚠️ Place Start and Stop markers first'); return; }
+      if (!routeCoords.length) { addLog('warn', 'Route still loading'); setStatus('warn', '⏳ Route still loading...'); return; }
+      if (isSimulating) return;
+      if (driverMarker) map.removeLayer(driverMarker);
+      driverMarker = L.marker(routeCoords[0], { icon: driverIcon }).addTo(map);
+      routeTick = 0; progress = 0; pingCount = 0;
+      isSimulating = true;
+      document.getElementById('liveDot').classList.add('active');
+      document.getElementById('liveLabel').textContent = 'LIVE';
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('stopBtn').style.display = 'block';
+      document.getElementById('haltBtn').style.display = 'block'; isTruckHalted = false;
+      updateHint('🚛 Simulation running — driver en route');
+      simulationInterval = setInterval(tickSimulation, 100);
+      const ms = Math.max(parseFloat(document.getElementById('intervalMins').value) * 60000, 2000);
+      sendPing();
+      dataInterval = setInterval(sendPing, ms);
+      startEtaPolling();
+      setStatus('ok', '🚀 Simulation started');
+      addLog('info', `Started — ping interval: ${ms / 1000}s | speed: ${document.getElementById('simSpeed').value}x`);
+    }
+
+    function stopTracking() {
+      clearInterval(simulationInterval); clearInterval(dataInterval);
+      isSimulating = false;
+      stopEtaPolling();
+      document.getElementById('liveDot').classList.remove('active');
+      document.getElementById('liveLabel').textContent = 'PAUSED';
+      document.getElementById('startBtn').style.display = 'block';
+      document.getElementById('stopBtn').style.display = 'none';
+      document.getElementById('haltBtn').style.display = 'none'; isTruckHalted = false;
+      updateHint('Paused — press <span>▶ Start</span> to resume');
+      addLog('warn', 'Simulation paused');
+    }
+
+    function resetAll() {
+      stopTracking();
+      [startMarker, stopMarker, driverMarker, routeLine].forEach(m => { if (m) try { map.removeLayer(m) } catch (_) { } });
+      startMarker = stopMarker = driverMarker = routeLine = null;
+      markerStep = 0; progress = 0; pingCount = 0; routeCoords = []; routeTick = 0; totalRouteDist = 0;
+      knownEtaIds.clear(); latestEtaData = null;
+      document.getElementById('statProgress').textContent = '0%';
+      document.getElementById('statPings').textContent = '0';
+      document.getElementById('statEta').textContent = '—';
+      document.getElementById('statSpeed').textContent = '— km/h';
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('liveLabel').textContent = 'IDLE';
+      document.getElementById('etaTimeline').innerHTML = '';
+      document.getElementById('etaSnapshotCount').textContent = 'No data yet';
+      document.getElementById('etaBigDisplay').textContent = '— : —';
+      document.getElementById('etaDeltaBadge').textContent = '—';
+      document.getElementById('etaApiStatus').textContent = 'IDLE';
+      document.getElementById('etaApiStatus').style.color = 'var(--muted)';
+      setStatus('', 'Click map to place <span style="color:var(--accent)">Start</span> then <span style="color:var(--accent2)">Stop</span> markers');
+      updateHint('Click map → set <span>① Start</span> then <span>② Stop</span> marker');
+      addLog('info', 'Reset — all cleared');
+    }
+
+    // ─── Halt truck (freeze movement, keep pings) ─────────────────
+    function toggleHalt() {
+      isTruckHalted = !isTruckHalted;
+      const btn = document.getElementById('haltBtn');
+      if (isTruckHalted) {
+        btn.textContent = '▶ Resume Truck';
+        btn.style.color = 'var(--accent)';
+        btn.style.borderColor = 'var(--accent)';
+        addLog('warn', '⏸ Truck halted at current position — API pings still firing');
+        setStatus('warn', '⏸ Truck halted — pings still firing at same coordinates');
+        updateHint('⏸ Truck halted — <span>API still pinging</span>');
+      } else {
+        btn.textContent = '⏸ Halt Truck';
+        btn.style.color = 'var(--accent3)';
+        btn.style.borderColor = 'var(--accent3)';
+        addLog('info', '▶ Truck resumed movement');
+        setStatus('ok', '🚛 Truck resumed — moving along route');
+        updateHint('🚛 Simulation running — driver en route');
+      }
+    }
+
+    // ─── Speed label ──────────────────────────────────────────────
+    document.getElementById('simSpeed').addEventListener('input', e => { document.getElementById('speedLabel').textContent = e.target.value + 'x'; });
+
+    // ─── Default appointment ──────────────────────────────────────
+    const d = new Date(Date.now() + 3600000);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    document.getElementById('localAppointment').value = d.toISOString().slice(0, 16);
+
+    // ─── Keyboard shortcut ────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.key === ' ' && !e.target.matches('input,select')) { e.preventDefault(); isSimulating ? stopTracking() : startTracking(); }
+    });
+
+    addLog('info', 'Simulator ready — click map to place markers');
+  </script>
+</body>
+
+</html>

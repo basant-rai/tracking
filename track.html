@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperTruck — Driver Tracking Simulator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --panel: #161a21;
+      --border: #1e2330;
+      --accent: #00e5a0;
+      --accent2: #ff4d6a;
+      --accent3: #ffa733;
+      --blue: #3d9eff;
+      --text: #e4eaf4;
+      --muted: #4a5568;
+      --dim: #2d3448;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ─────────────────────────────── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 1000;
+    }
+
+    .logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--text);
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent2);
+    }
+
+    .live-dot.active {
+      animation: pulse-dot 1s infinite;
+      background: var(--accent);
+      color: var(--accent);
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(0.7);
+      }
+    }
+
+    /* ── Main layout ─────────────────────────── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left panel ──────────────────────────── */
+    #panel {
+      width: 340px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    #panel::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    #panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #panel::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+    }
+
+    .field input[disabled] {
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .field select option {
+      background: var(--bg);
+    }
+
+    /* Speed slider */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--dim);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(0, 229, 160, 0.5);
+    }
+
+    .speed-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 30px;
+      text-align: right;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn-start {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .btn-start:hover {
+      background: #00ffb3;
+    }
+
+    .btn-stop {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+      display: none;
+    }
+
+    .btn-stop:hover {
+      background: rgba(255, 77, 106, 0.1);
+    }
+
+    .btn-reset {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-reset:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    /* Status card */
+    #statusCard {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.8;
+      color: var(--muted);
+      margin-bottom: 10px;
+      min-height: 42px;
+      transition: all 0.3s;
+    }
+
+    #statusCard.ok {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 229, 160, 0.05);
+    }
+
+    #statusCard.error {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(255, 77, 106, 0.05);
+    }
+
+    #statusCard.warn {
+      border-color: var(--accent3);
+      color: var(--accent3);
+      background: rgba(255, 167, 51, 0.05);
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      font-family: 'Barlow Condensed', sans-serif;
+      color: var(--text);
+    }
+
+    .stat-value.green {
+      color: var(--accent);
+    }
+
+    .stat-value.red {
+      color: var(--accent2);
+    }
+
+    .stat-value.amber {
+      color: var(--accent3);
+    }
+
+    .stat-value.blue {
+      color: var(--blue);
+    }
+
+    /* Progress bar */
+    .progress-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 8px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #00b377);
+      border-radius: 6px;
+      width: 0%;
+      transition: width 0.3s;
+      position: relative;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 20px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
+      animation: shimmer 1s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        opacity: 0;
+      }
+
+      50% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* Log feed */
+    #logFeed {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    #logFeed::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    #logFeed::-webkit-scrollbar-thumb {
+      background: var(--border);
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      border-radius: 5px;
+      border-left: 2px solid transparent;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .log-entry.ok {
+      border-left-color: var(--accent);
+      background: rgba(0, 229, 160, 0.04);
+    }
+
+    .log-entry.error {
+      border-left-color: var(--accent2);
+      background: rgba(255, 77, 106, 0.04);
+    }
+
+    .log-entry.warn {
+      border-left-color: var(--accent3);
+      background: rgba(255, 167, 51, 0.04);
+    }
+
+    .log-entry.info {
+      border-left-color: var(--blue);
+      background: rgba(61, 158, 255, 0.04);
+    }
+
+    .log-time {
+      color: var(--muted);
+      flex-shrink: 0;
+      font-size: 10px;
+    }
+
+    .log-msg {
+      color: var(--text);
+    }
+
+    .log-msg .tag {
+      display: inline-block;
+      padding: 0 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      margin-right: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-ok {
+      background: rgba(0, 229, 160, 0.15);
+      color: var(--accent);
+    }
+
+    .tag-err {
+      background: rgba(255, 77, 106, 0.15);
+      color: var(--accent2);
+    }
+
+    .tag-warn {
+      background: rgba(255, 167, 51, 0.15);
+      color: var(--accent3);
+    }
+
+    .tag-info {
+      background: rgba(61, 158, 255, 0.15);
+      color: var(--blue);
+    }
+
+    /* Map */
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #e8e8e8;
+    }
+
+    /* Map hint overlay */
+    #mapHint {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 12, 16, 0.85);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      color: var(--muted);
+      font-size: 12px;
+      padding: 10px 18px;
+      border-radius: 20px;
+      z-index: 999;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+    }
+
+    #mapHint span {
+      color: var(--accent);
+    }
+
+    /* ETA chip on map */
+    .eta-popup .leaflet-popup-content-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .leaflet-popup-tip {
+      background: var(--surface);
+    }
+
+    /* Ping counter */
+    .ping-counter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .ping-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    /* Hint text */
+    .hint-text {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 6px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top bar -->
+  <div id="topbar">
+    <div class="logo">SUPER<span>TRUCK</span> <span style="color:var(--muted);font-size:14px;font-weight:400">//
+        TRACKING SIM</span></div>
+    <div class="live-badge">
+      <div class="live-dot" id="liveDot"></div>
+      <span id="liveLabel">IDLE</span>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <!-- Left panel -->
+    <div id="panel">
+
+      <!-- Config -->
+      <div class="section">
+        <div class="section-title">Configuration</div>
+
+        <div class="field">
+          <label>API Endpoint</label>
+          <input type="text" id="apiUrl" value="http://localhost:3006/api/v1/driver-track/location">
+        </div>
+
+        <div class="field">
+          <label>x-tenant-id</label>
+          <input type="text" id="tenantId" value="58e06c32-fcf4-482e-965e-d812b6f92d28">
+        </div>
+
+        <div class="field">
+          <label>Authorization Token</label>
+          <input type="text" id="authToken" placeholder="Bearer eyJ...">
+        </div>
+
+        <div class="field">
+          <label>Trip ID</label>
+          <input type="text" id="tripId" value="b728b1d8-ad2c-437a-8c54-c5a2f4b0f31e">
+        </div>
+
+        <div class="field">
+          <label>Stop ID (next stop)</label>
+          <input type="text" id="stopId" value="c554bb91-53d3-4b86-811d-26860ca341ed">
+        </div>
+
+        <div class="field">
+          <label>Appointment Time (Local)</label>
+          <input type="datetime-local" id="localAppointment">
+        </div>
+      </div>
+
+      <!-- Simulation -->
+      <div class="section">
+        <div class="section-title">Simulation</div>
+
+        <div class="field">
+          <label>Ping Interval</label>
+          <select id="intervalMins">
+            <option value="0.17">10 Seconds (Dev)</option>
+            <option value="0.5">30 Seconds (Fast Test)</option>
+            <option value="1">1 Minute</option>
+            <option value="5">5 Minutes</option>
+            <option value="10" selected>10 Minutes (Production)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Driver Speed Multiplier</label>
+          <div class="slider-row">
+            <input type="range" id="simSpeed" min="1" max="100" value="10">
+            <span class="speed-val" id="speedLabel">10x</span>
+          </div>
+          <div class="hint-text">Higher = driver moves faster on map</div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="section">
+        <div class="section-title">Status</div>
+        <div id="statusCard">Click map to place <span style="color:var(--accent)">Start</span> then <span
+            style="color:var(--accent2)">Stop</span> markers</div>
+
+        <div class="progress-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Progress</div>
+            <div class="stat-value blue" id="statProgress">0%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Pings Sent</div>
+            <div class="stat-value green" id="statPings">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">ETA</div>
+            <div class="stat-value amber" id="statEta">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Speed</div>
+            <div class="stat-value" id="statSpeed">— km/h</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn btn-start" id="startBtn" onclick="startTracking()">▶ Start Simulation</button>
+          <button class="btn btn-stop" id="stopBtn" onclick="stopTracking()">■ Stop Simulation</button>
+          <button class="btn btn-reset" onclick="resetAll()">↺ Reset Markers</button>
+        </div>
+      </div>
+
+      <!-- Log feed -->
+      <div class="section-title"
+        style="padding:12px 16px 4px;font-family:'Barlow Condensed';font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);">
+        PING LOG</div>
+      <div id="logFeed"></div>
+
+    </div>
+
+    <!-- Map -->
+    <div style="flex:1;position:relative;min-width:0;min-height:0;">
+      <div id="map" style="position:absolute;inset:0;"></div>
+      <div id="mapHint">Click map → set <span>① Start</span> then <span>② Stop</span> marker</div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // ─── State ────────────────────────────────────────────────────
+    let startMarker, stopMarker, driverMarker, routeLine, etaLine;
+    let simulationInterval, dataInterval;
+    let progress = 0;
+    let isSimulating = false;
+    let pingCount = 0;
+    let markerStep = 0;   // 0=place start, 1=place stop, 2=done
+
+    // Road route state (OSRM)
+    let routeCoords = [];  // [{lat,lng}] points along actual road
+    let routeTick = 0;   // current sub-index along routeCoords
+    let totalRouteDist = 0;   // km from OSRM response
+
+    // ─── Map init ─────────────────────────────────────────────────
+    const map = L.map('map', { zoomControl: false }).setView([27.6710, 85.3120], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Force Leaflet to recalculate size after fonts/layout settle
+    setTimeout(() => map.invalidateSize(), 200);
+
+    // ─── Icons ────────────────────────────────────────────────────
+    const mkIcon = (color, size, label) => L.divIcon({
+      className: '',
+      html: `
+    <div style="
+      position:relative;
+      width:${size}px;height:${size}px;
+      background:${color};
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      border:2px solid rgba(255,255,255,0.8);
+      box-shadow:0 0 12px ${color}88;
+    ">
+      <div style="
+        position:absolute;inset:0;
+        display:flex;align-items:center;justify-content:center;
+        transform:rotate(45deg);
+        font-size:${Math.floor(size * 0.35)}px;
+        font-weight:800;
+        color:rgba(0,0,0,0.8);
+        font-family:'Barlow Condensed',sans-serif;
+      ">${label}</div>
+    </div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size],
+      popupAnchor: [0, -size],
+    });
+
+    const driverIcon = L.divIcon({
+      className: '',
+      html: `
+    <div style="position:relative;width:28px;height:28px;">
+      <div style="
+        width:28px;height:28px;
+        background:#3d9eff;
+        border-radius:50%;
+        border:3px solid white;
+        box-shadow:0 0 0 3px rgba(61,158,255,0.3), 0 4px 16px rgba(0,0,0,0.5);
+        display:flex;align-items:center;justify-content:center;
+        font-size:13px;
+      ">🚛</div>
+      <div id="driverPulse" style="
+        position:absolute;inset:-5px;
+        border-radius:50%;
+        border:2px solid rgba(61,158,255,0.4);
+        animation:driverPulse 2s infinite;
+      "></div>
+    </div>
+    <style>
+      @keyframes driverPulse {
+        0%   { transform:scale(1);   opacity:0.8; }
+        100% { transform:scale(1.8); opacity:0; }
+      }
+    </style>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    });
+
+    // ─── Map click ────────────────────────────────────────────────
+    map.on('click', (e) => {
+      if (isSimulating) {
+        addLog('warn', 'Stop simulation before moving markers');
+        return;
+      }
+
+      if (markerStep === 0) {
+        // Place start
+        startMarker = L.marker(e.latlng, {
+          icon: mkIcon('#00e5a0', 30, 'S'),
+          draggable: true
+        }).addTo(map).bindPopup('<b style="color:#00e5a0">START POINT</b><br>Driver begins here');
+        startMarker.on('drag', updateRoute);
+        markerStep = 1;
+        updateHint('Now click to place <span>② Stop</span> (delivery) marker');
+        addLog('info', '📍 Start marker placed');
+
+      } else if (markerStep === 1) {
+        // Place stop
+        stopMarker = L.marker(e.latlng, {
+          icon: mkIcon('#ff4d6a', 30, 'D'),
+          draggable: true
+        }).addTo(map).bindPopup('<b style="color:#ff4d6a">DELIVERY STOP</b><br>Destination');
+        stopMarker.on('drag', updateRoute);
+        markerStep = 2;
+        updateHint('Markers set. Press <span>▶ Start</span> to begin simulation');
+        updateRoute();
+        addLog('ok', '📍 Stop marker placed — ready to simulate');
+
+      } else {
+        // Both exist — ignore, use reset button
+      }
+    });
+
+    async function updateRoute() {
+      if (!startMarker || !stopMarker) return;
+
+      const s = startMarker.getLatLng();
+      const e = stopMarker.getLatLng();
+
+      // Draw straight dashed line immediately as placeholder
+      const straight = [s, e];
+      if (routeLine) { routeLine.setLatLngs(straight); }
+      else {
+        routeLine = L.polyline(straight, {
+          color: '#3d9eff', weight: 3, dashArray: '8, 12', opacity: 0.4,
+        }).addTo(map);
+      }
+      map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+
+      // Fetch real road route from OSRM (free, no key)
+      updateHint('⏳ Fetching road route...');
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${s.lng},${s.lat};${e.lng},${e.lat}?overview=full&geometries=geojson&steps=false`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.code !== 'Ok' || !data.routes?.length) throw new Error('No route found');
+
+        const route = data.routes[0];
+        totalRouteDist = route.distance / 1000;  // metres → km
+
+        // GeoJSON coords are [lng, lat] — flip to {lat, lng}
+        routeCoords = route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+
+        // Replace the placeholder with real road polyline
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline(routeCoords, {
+          color: '#3d9eff', weight: 4, opacity: 0.75,
+        }).addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+
+        const durationMin = Math.round(route.duration / 60);
+        addLog('ok', `Road route loaded — ${totalRouteDist.toFixed(1)} km | ~${durationMin} min | ${routeCoords.length} waypoints`);
+        updateHint('Markers set. Press <span>▶ Start</span> to begin simulation');
+      } catch (err) {
+        // OSRM failed — fall back to straight line but keep routeCoords as two-point array
+        routeCoords = [s, e];
+        totalRouteDist = haversineKm(s.lat, s.lng, e.lat, e.lng);
+        addLog('warn', `OSRM unavailable (${err.message}) — using straight line`);
+        updateHint('Markers set. Press <span>▶ Start</span> to begin (straight line fallback)');
+      }
+      routeTick = 0;
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────
+    function interpolate(a, b, t) {
+      return { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t };
+    }
+
+    function haversineKm(lat1, lng1, lat2, lng2) {
+      const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function calcHeading(a, b) {
+      const lat1 = a.lat * Math.PI / 180, lng1 = a.lng * Math.PI / 180;
+      const lat2 = b.lat * Math.PI / 180, lng2 = b.lng * Math.PI / 180;
+      const dLng = lng2 - lng1;
+      const y = Math.sin(dLng) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+      return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+    }
+
+    function fmtTime(d) {
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function fmtEta(d) {
+      const diff = Math.round((d - Date.now()) / 60000);
+      if (diff <= 0) return 'NOW';
+      if (diff < 60) return `${diff}m`;
+      return `${Math.floor(diff / 60)}h ${diff % 60}m`;
+    }
+
+    function updateHint(html) {
+      document.getElementById('mapHint').innerHTML = html;
+    }
+
+    // ─── Log feed ─────────────────────────────────────────────────
+    function addLog(type, msg) {
+      const feed = document.getElementById('logFeed');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+
+      const tagMap = { ok: 'OK', error: 'ERR', warn: 'WARN', info: 'INFO' };
+      entry.innerHTML = `
+    <span class="log-time">${fmtTime(new Date())}</span>
+    <span class="log-msg"><span class="tag tag-${type === 'ok' ? 'ok' : type === 'error' ? 'err' : type === 'warn' ? 'warn' : 'info'}">${tagMap[type] || 'INFO'}</span>${msg}</span>
+  `;
+      feed.insertBefore(entry, feed.firstChild);
+
+      // Keep max 80 entries
+      while (feed.children.length > 80) feed.removeChild(feed.lastChild);
+    }
+
+    // ─── Status card ──────────────────────────────────────────────
+    function setStatus(type, html) {
+      const el = document.getElementById('statusCard');
+      el.className = type;
+      el.innerHTML = html;
+    }
+
+    // ─── Send ping to API ─────────────────────────────────────────
+    async function sendPing() {
+      if (!driverMarker || !stopMarker || !routeCoords.length) return;
+
+      const pos = driverMarker.getLatLng();
+      const stop = stopMarker.getLatLng();
+      const apptISO = new Date(document.getElementById('localAppointment').value).toISOString();
+
+      // Heading: direction to next waypoint on road (not straight to stop)
+      const nextWpt = routeCoords[Math.min(routeTick + 1, routeCoords.length - 1)];
+      const heading = Math.round(calcHeading(pos, nextWpt));
+
+      // Distance remaining along road (approximate: remaining waypoints)
+      const remainingWaypoints = routeCoords.slice(routeTick);
+      let distRemaining = 0;
+      for (let i = 0; i < remainingWaypoints.length - 1; i++) {
+        distRemaining += haversineKm(
+          remainingWaypoints[i].lat, remainingWaypoints[i].lng,
+          remainingWaypoints[i + 1].lat, remainingWaypoints[i + 1].lng
+        );
+      }
+
+      const speedKmh = 25 + Math.random() * 15;
+      const travelMins = distRemaining > 0 ? (distRemaining / speedKmh) * 60 : 0;
+      const etaDate = new Date(Date.now() + travelMins * 60000);
+
+      const payload = {
+        tripId: document.getElementById('tripId').value,
+        lat: pos.lat,
+        lng: pos.lng,
+        speedKmh: Math.round(speedKmh * 10) / 10,
+        heading: heading,
+        etaSource: 'GPS_AUTO',
+        // recordedAt: new Date().toISOString(),
+        nextStop: {
+          stopId: document.getElementById('stopId').value,
+          lat: stop.lat,
+          lng: stop.lng,
+          address: "Patan Durbar Square, Lalitpur",
+          appointmentTime: apptISO,
+          type: 'delivery',
+          // distanceKm: Math.round(distRemaining * 10) / 10,
+          // calculatedEta: etaDate.toISOString(),
+        },
+      };
+
+      // Update stats
+      document.getElementById('statSpeed').textContent = `${payload.speedKmh} km/h`;
+      document.getElementById('statEta').textContent = fmtEta(etaDate);
+      const AUTH_TOKEN = "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjM1NzgwOTQyNTA5Mzc1NDg4MyIsInR5cCI6IkpXVCJ9.eyJhbXIiOlsicHdkIl0sImF0X2hhc2giOiJ0aFFIZGxfclNSbkhVREt6S18zMmx3IiwiYXVkIjpbIjM1NzgxNDU5OTE1MzY4MDM4NyIsIjM1ODM4MzYxMjU5NDI5MDY5MSIsIjM1NzgxNDI5NDk5OTQ2NTk4NyJdLCJhdXRoX3RpbWUiOjE3NzIxNjUyNjMsImF6cCI6IjM1NzgxNDU5OTE1MzY4MDM4NyIsImNsaWVudF9pZCI6IjM1NzgxNDU5OTE1MzY4MDM4NyIsImVtYWlsIjoid3VuaWZyYWJldWdhLTgzMTJAeW9wbWFpbC5jb20iLCJleHAiOjE3NzIyMDg0NzYsImZhbWlseV9uYW1lIjoiVXNlciIsImdpdmVuX25hbWUiOiJ3dW5pZnJhYmV1Z2EtODMxMiIsImlhdCI6MTc3MjE2NTI2NiwiaXNzIjoiaHR0cHM6Ly96aXRhZGVsLnN1cGVydHJ1Y2suYWkiLCJsb2NhbGUiOiJlbiIsIm5hbWUiOiJ3dW5pZnJhYmV1Z2EtODMxMiBVc2VyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoid3VuaWZyYWJldWdhLTgzMTJAeW9wbWFpbC5jb20iLCJzaWQiOiIzNjE4MzI5ODg4NDI5MTc4OTIiLCJzdWIiOiIzMjMiLCJ1cGRhdGVkX2F0IjoxNzcwMTA3MjMwLCJ1cm46eml0YWRlbDppYW06b3JnOnByb2plY3Q6MzU3ODE0Mjk0OTk5NDY1OTg3OnJvbGVzIjp7ImRyaXZlciI6eyIzNTc4MDk0MjM0MzI4NzYwMzUiOiJzdXBlcnRydWNrLnppdGFkZWwuc3VwZXJ0cnVjay5haSJ9fSwidXJuOnppdGFkZWw6aWFtOm9yZzpwcm9qZWN0OnJvbGVzIjp7ImRyaXZlciI6eyIzNTc4MDk0MjM0MzI4NzYwMzUiOiJzdXBlcnRydWNrLnppdGFkZWwuc3VwZXJ0cnVjay5haSJ9fX0.cWoSPzQ4EqD6pdL6ouY4xa_EeNJu0jih-BqyMwIn5j-EShcMR0tKXXkXjEKTc8scSgoddxENYtM1VKmkf5L49nAWJAI_P1zz3U-bIZl7XpfwEPcd6B3CI8wneT5fBnp70FU6LIc_5hFwXlitbvWTsz-2RGYgPUL7cjBZfZEY_uzXFBAXrGVUrJAXOacl5sLDG20m0L5BelZssfrT9q774Q-sD-bEDRJ1x2qH6KJaArNW7MaDHd0EtV_11cIpcmxx35VAuQyoLx20-b70pwGyQkQBAksJwh1lWogipQ4i4g8AcokOo71XO9DsmHubrUeUIs4oao7HgvLz3WBi4nkTNg";
+
+      try {
+        const res = await fetch(document.getElementById('apiUrl').value, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': document.getElementById('tenantId').value,
+            'Authorization': AUTH_TOKEN,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        pingCount++;
+        document.getElementById('statPings').textContent = pingCount;
+
+        const resText = await res.text();
+        let resJson;
+        try { resJson = JSON.parse(resText); } catch (_) { resJson = null; }
+
+        if (res.ok) {
+          setStatus('ok', `✅ Ping #${pingCount} accepted &nbsp;|&nbsp; ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
+          addLog('ok', `Ping #${pingCount} → ${res.status} | lat:${pos.lat.toFixed(4)} lng:${pos.lng.toFixed(4)} | ETA ${fmtEta(etaDate)} | ${distRemaining.toFixed(1)}km remaining`);
+        } else {
+          setStatus('error', `⚠️ HTTP ${res.status} — ${resJson?.message || resText?.slice(0, 80) || 'Server error'}`);
+          addLog('error', `Ping #${pingCount} → HTTP ${res.status}: ${resJson?.message || resText?.slice(0, 60)}`);
+        }
+
+      } catch (err) {
+        setStatus('error', `❌ Network error: ${err.message}`);
+        addLog('error', `Network error: ${err.message}`);
+      }
+    }
+
+    // ─── Simulation loop ──────────────────────────────────────────
+    function tickSimulation() {
+      if (!routeCoords.length) return;
+
+      const speed = parseInt(document.getElementById('simSpeed').value);
+      // Each tick advances N waypoints — higher speed = more steps per tick
+      const steps = Math.max(1, Math.floor(speed / 10));
+      routeTick += steps;
+
+      if (routeTick >= routeCoords.length - 1) {
+        routeTick = routeCoords.length - 1;
+        const pos = routeCoords[routeTick];
+        if (driverMarker) driverMarker.setLatLng(pos);
+        stopTracking();
+        setStatus('ok', '🏁 Driver arrived at stop — simulation complete');
+        addLog('ok', '🏁 Arrived at destination — simulation complete');
+        document.getElementById('statProgress').textContent = '100%';
+        document.getElementById('progressBar').style.width = '100%';
+        return;
+      }
+
+      const pos = routeCoords[routeTick];
+      const next = routeCoords[Math.min(routeTick + 1, routeCoords.length - 1)];
+
+      if (!driverMarker) {
+        driverMarker = L.marker(pos, { icon: driverIcon }).addTo(map);
+      } else {
+        driverMarker.setLatLng(pos);
+      }
+
+      // Update heading based on actual road direction
+      const pct = Math.round((routeTick / (routeCoords.length - 1)) * 100);
+      progress = routeTick / (routeCoords.length - 1);
+
+      document.getElementById('statProgress').textContent = `${pct}%`;
+      document.getElementById('progressBar').style.width = `${pct}%`;
+    }
+
+    // ─── Start / Stop / Reset ─────────────────────────────────────
+    function startTracking() {
+      if (markerStep < 2) {
+        addLog('warn', 'Place both Start and Stop markers first');
+        setStatus('warn', '⚠️ Place both Start and Stop markers on the map first');
+        return;
+      }
+      if (!routeCoords.length) {
+        addLog('warn', 'Route still loading — please wait a moment');
+        setStatus('warn', '⏳ Route is still loading from OSRM, please wait...');
+        return;
+      }
+      if (isSimulating) return;
+
+      // Reset driver to route start
+      if (driverMarker) map.removeLayer(driverMarker);
+      driverMarker = L.marker(routeCoords[0], { icon: driverIcon }).addTo(map);
+      routeTick = 0;
+      progress = 0;
+      pingCount = 0;
+
+      isSimulating = true;
+      document.getElementById('liveDot').classList.add('active');
+      document.getElementById('liveLabel').textContent = 'LIVE';
+
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('stopBtn').style.display = 'block';
+      updateHint('🚛 Simulation running — driver en route');
+
+      // Animation loop — 100ms
+      simulationInterval = setInterval(tickSimulation, 100);
+
+      // Data ping loop
+      const mins = parseFloat(document.getElementById('intervalMins').value);
+      const ms = Math.max(mins * 60 * 1000, 2000);
+
+      sendPing(); // Fire immediately
+      dataInterval = setInterval(sendPing, ms);
+
+      setStatus('ok', '🚀 Simulation started — pinging server...');
+      addLog('info', `Simulation started — interval: ${mins < 1 ? (mins * 60) + 's' : mins + 'm'} | speed: ${document.getElementById('simSpeed').value}x`);
+    }
+
+    function stopTracking() {
+      clearInterval(simulationInterval);
+      clearInterval(dataInterval);
+      isSimulating = false;
+
+      document.getElementById('liveDot').classList.remove('active');
+      document.getElementById('liveLabel').textContent = 'PAUSED';
+      document.getElementById('startBtn').style.display = 'block';
+      document.getElementById('stopBtn').style.display = 'none';
+      updateHint('Paused — press <span>▶ Start</span> to resume');
+      addLog('warn', 'Simulation paused');
+    }
+
+    function resetAll() {
+      stopTracking();
+      [startMarker, stopMarker, driverMarker, routeLine, etaLine].forEach(m => {
+        if (m) try { map.removeLayer(m); } catch (_) { }
+      });
+      startMarker = stopMarker = driverMarker = routeLine = etaLine = null;
+      markerStep = 0;
+      progress = 0;
+      pingCount = 0;
+      routeCoords = [];
+      routeTick = 0;
+      totalRouteDist = 0;
+
+      document.getElementById('statProgress').textContent = '0%';
+      document.getElementById('statPings').textContent = '0';
+      document.getElementById('statEta').textContent = '—';
+      document.getElementById('statSpeed').textContent = '— km/h';
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('liveLabel').textContent = 'IDLE';
+
+      setStatus('', 'Click map to place <span style="color:var(--accent)">Start</span> then <span style="color:var(--accent2)">Stop</span> markers');
+      updateHint('Click map → set <span>① Start</span> then <span>② Stop</span> marker');
+      addLog('info', 'Reset — markers cleared');
+    }
+
+    // ─── Speed label ──────────────────────────────────────────────
+    document.getElementById('simSpeed').addEventListener('input', (e) => {
+      document.getElementById('speedLabel').textContent = e.target.value + 'x';
+    });
+
+    // ─── Default appointment: 1hr from now ───────────────────────
+    const d = new Date(Date.now() + 3600000);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    document.getElementById('localAppointment').value = d.toISOString().slice(0, 16);
+
+    // ─── Keyboard shortcut ────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ' && !e.target.matches('input,select')) {
+        e.preventDefault();
+        isSimulating ? stopTracking() : startTracking();
+      }
+    });
+
+    addLog('info', 'Simulator ready — click map to place markers');
+  </script>
+</body>
+
+</html>
