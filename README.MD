@@ -5,7 +5,7 @@ This diagram illustrates the high-concurrency pipeline from the Flutter driver a
 ```mermaid
 sequenceDiagram
     autonumber
-    participant App as 📱 Flutter App
+    participant App as CLient
     participant Go as ⚡ Go Gateway
     participant Redis as 🔴 Redis Stream
     participant Nest as 🔺 NestJS
