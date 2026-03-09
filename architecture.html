@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuperTruck — Go + NestJS Architecture</title>
+  <title>Tracking — Go + NestJS Architecture</title>
   <link
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@400;600;700;800&display=swap"
     rel="stylesheet">
@@ -1152,7 +1152,7 @@
             <div class="resp-icon">📤</div>
             <div>
               <div class="resp-title">Redis Stream Publish</div>
-              <div class="resp-desc"><code>XADD supertruck:location_pings * payload {json}</code>. Stream (not Pub/Sub)
+              <div class="resp-desc"><code>XADD Tracking:location_pings * payload {json}</code>. Stream (not Pub/Sub)
                 = durable. <code>MAXLEN ~ 100000</code> prevents unbounded growth. NestJS uses <code>XREADGROUP</code>
                 for at-least-once delivery.</div>
             </div>
@@ -1365,7 +1365,7 @@
             <span class="rk-name">location_pings</span>
           </div>
           <div class="rk-body">
-            <div class="rk-format">supertruck:location_pings</div>
+            <div class="rk-format">Tracking:location_pings</div>
             <div class="rk-row"><span class="label">Written by</span><span class="value" style="color:var(--go)">Go
                 (XADD)</span></div>
             <div class="rk-row"><span class="label">Read by</span><span class="value" style="color:var(--nest)">NestJS

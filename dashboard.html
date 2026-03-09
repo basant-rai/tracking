@@ -10,6 +10,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
+  <!-- socket.io client — talks to NestJS TrackingGateway -->
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <style>
     :root {
       --bg: #0a0c10;
@@ -42,7 +44,6 @@
       overflow: hidden;
     }
 
-    /* ── Top bar ── */
     #topbar {
       display: flex;
       align-items: center;
@@ -60,7 +61,6 @@
       font-size: 22px;
       font-weight: 800;
       letter-spacing: 1px;
-      color: var(--text);
     }
 
     .logo span {
@@ -149,7 +149,6 @@
       }
     }
 
-    /* ── Mode toggle ── */
     .mode-toggle {
       display: flex;
       border: 1px solid var(--border);
@@ -181,14 +180,12 @@
       color: #000;
     }
 
-    /* ── Main layout ── */
     #main {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
 
-    /* ── Left panel ── */
     #panel {
       width: 300px;
       flex-shrink: 0;
@@ -209,7 +206,6 @@
       border-radius: 2px;
     }
 
-    /* ── Right ETA panel ── */
     #etaPanel {
       width: 320px;
       flex-shrink: 0;
@@ -272,7 +268,6 @@
       background: var(--bg);
     }
 
-    /* WS-mode fields get purple accent */
     body.ws-mode .field input:focus,
     body.ws-mode .field select:focus {
       border-color: var(--purple);
@@ -412,7 +407,43 @@
       background: rgba(255, 167, 51, 0.05);
     }
 
-    /* WS connection status strip */
+    /* ── Dashboard Socket Status Strip ── */
+    #dashSocketStrip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      background: var(--bg);
+    }
+
+    #dashSocketDot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--dim);
+      flex-shrink: 0;
+    }
+
+    #dashSocketDot.connected {
+      background: var(--purple);
+      box-shadow: 0 0 5px var(--purple);
+      animation: pulse-dot 2s infinite;
+    }
+
+    #dashSocketDot.disconnected {
+      background: var(--accent2);
+    }
+
+    #dashSocketDot.connecting {
+      background: var(--accent3);
+      animation: pulse-dot 0.8s infinite;
+    }
+
     #wsStatusStrip {
       display: none;
       align-items: center;
@@ -514,7 +545,6 @@
       background: linear-gradient(90deg, var(--purple), #9333ea);
     }
 
-    /* ── Log feed ── */
     #logFeed {
       flex: 1;
       padding: 8px 12px 60px;
@@ -584,6 +614,11 @@
       background: rgba(192, 132, 252, 0.04);
     }
 
+    .log-entry.dash {
+      border-left-color: var(--purple);
+      background: rgba(192, 132, 252, 0.06);
+    }
+
     .log-time {
       color: var(--muted);
       flex-shrink: 0;
@@ -607,35 +642,39 @@
 
     .tag-ok {
       background: rgba(0, 229, 160, 0.15);
-      color: var(--accent);
+      color: var(--accent)
     }
 
     .tag-err {
       background: rgba(255, 77, 106, 0.15);
-      color: var(--accent2);
+      color: var(--accent2)
     }
 
     .tag-warn {
       background: rgba(255, 167, 51, 0.15);
-      color: var(--accent3);
+      color: var(--accent3)
     }
 
     .tag-info {
       background: rgba(61, 158, 255, 0.15);
-      color: var(--blue);
+      color: var(--blue)
     }
 
     .tag-eta {
       background: rgba(255, 167, 51, 0.2);
-      color: #ffcc44;
+      color: #ffcc44
     }
 
     .tag-ws {
       background: rgba(192, 132, 252, 0.15);
-      color: var(--purple);
+      color: var(--purple)
     }
 
-    /* ── Map ── */
+    .tag-dash {
+      background: rgba(192, 132, 252, 0.2);
+      color: var(--purple)
+    }
+
     #map {
       width: 100%;
       height: 100%;
@@ -663,7 +702,6 @@
       color: var(--accent);
     }
 
-    /* ── ETA Panel ── */
     .eta-header {
       padding: 14px 16px;
       border-bottom: 1px solid var(--border);
@@ -672,32 +710,31 @@
       justify-content: space-between;
     }
 
-    .eta-poll-badge {
+    /* Dashboard socket badge in ETA panel header */
+    .dash-sock-badge {
       display: flex;
       align-items: center;
       gap: 5px;
       font-size: 10px;
       color: var(--muted);
+      padding: 3px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
     }
 
-    .eta-poll-dot {
+    .dash-sock-badge .ds-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.3s;
+      background: var(--dim);
     }
 
-    .eta-poll-dot.polling {
-      background: var(--accent3);
-      animation: pulse-dot 0.8s infinite;
+    .dash-sock-badge .ds-dot.live {
+      background: var(--purple);
+      animation: pulse-dot 1.5s infinite;
     }
 
-    .eta-poll-dot.ok {
-      background: var(--accent);
-    }
-
-    .eta-poll-dot.error {
+    .dash-sock-badge .ds-dot.error {
       background: var(--accent2);
     }
 
@@ -806,28 +843,28 @@
     }
 
     .dot-initial {
-      background: var(--blue);
+      background: var(--blue)
     }
 
     .dot-traffic {
-      background: var(--accent3);
+      background: var(--accent3)
     }
 
     .dot-periodic {
-      background: var(--muted);
+      background: var(--muted)
     }
 
     .dot-risk {
       background: var(--accent2);
-      box-shadow: 0 0 6px var(--accent2);
+      box-shadow: 0 0 6px var(--accent2)
     }
 
     .dot-manual {
-      background: var(--purple);
+      background: var(--purple)
     }
 
     .dot-appt {
-      background: var(--accent);
+      background: var(--accent)
     }
 
     .eta-row-body {
@@ -861,30 +898,34 @@
     }
 
     .reason-INITIAL_SET {
-      color: var(--blue);
+      color: var(--blue)
     }
 
     .reason-TRAFFIC {
-      color: var(--accent3);
+      color: var(--accent3)
     }
 
     .reason-PERIODIC {
-      color: var(--muted);
+      color: var(--muted)
     }
 
     .reason-RISK_STATE_CHANGED {
-      color: var(--accent2);
+      color: var(--accent2)
     }
 
     .reason-MANUAL_OVERRIDE {
-      color: var(--purple);
+      color: var(--purple)
     }
 
     .reason-APPOINTMENT_CHANGED {
-      color: var(--accent);
+      color: var(--accent)
     }
 
-    /* ── Alert toasts ── */
+    /* Live location flash on map update */
+    .location-flash {
+      background: rgba(192, 132, 252, 0.08);
+    }
+
     #alertContainer {
       position: fixed;
       top: 60px;
@@ -908,19 +949,23 @@
     }
 
     .alert-toast.risk {
-      border-left-color: var(--accent2);
+      border-left-color: var(--accent2)
     }
 
     .alert-toast.warn {
-      border-left-color: var(--accent3);
+      border-left-color: var(--accent3)
     }
 
     .alert-toast.info {
-      border-left-color: var(--blue);
+      border-left-color: var(--blue)
     }
 
     .alert-toast.ws {
-      border-left-color: var(--purple);
+      border-left-color: var(--purple)
+    }
+
+    .alert-toast.dash {
+      border-left-color: var(--purple)
     }
 
     .alert-title {
@@ -980,21 +1025,21 @@
     <div class="logo">SUPER<span>TRUCK</span> <span style="color:var(--muted);font-size:14px;font-weight:400">//
         TRACKING SIM</span></div>
     <div class="topbar-right">
-      <!-- Transport mode toggle -->
       <div class="mode-toggle">
         <button class="mode-btn active" id="modeHttp" onclick="setMode('http')">HTTP</button>
         <button class="mode-btn" id="modeWs" onclick="setMode('ws')">WS</button>
       </div>
-      <!-- WS connection pill -->
+      <!-- Driver WS pill -->
       <div class="topbar-pill" id="wsPill" style="display:none;">
         <div class="dot" id="wsPillDot"></div>
-        <span class="label" id="wsPillLabel">DISCONNECTED</span>
+        <span style="color:var(--muted)">DRIVER:</span>
+        <span class="label" id="wsPillLabel">OFF</span>
       </div>
-      <!-- ETA API pill -->
+      <!-- Dashboard socket.io pill -->
       <div class="topbar-pill">
-        <div class="dot" id="etaApiDot"></div>
-        <span style="color:var(--muted)">ETA:</span>
-        <span class="label" id="etaApiStatus">IDLE</span>
+        <div class="dot" id="dashPillDot"></div>
+        <span style="color:var(--muted)">DASH:</span>
+        <span class="label" id="dashPillLabel">DISCONNECTED</span>
       </div>
       <div class="live-badge">
         <div class="live-dot" id="liveDot"></div>
@@ -1015,14 +1060,12 @@
         <!-- HTTP-only -->
         <div class="field http-only"><label>Location API (HTTP POST)</label><input type="text" id="apiUrl"
             value="http://localhost:3006/api/v1/driver-track/location"></div>
-
         <!-- WS-only -->
-        <div class="field ws-only"><label>WebSocket URL</label><input type="text" id="wsUrl"
+        <div class="field ws-only"><label>Driver WebSocket (Go)</label><input type="text" id="wsUrl"
             value="ws://localhost:8081/ws/driver"></div>
-
-        <!-- Common -->
-        <div class="field"><label>ETA API Base</label><input type="text" id="etaApiBase"
-            value="http://localhost:3006/api/v1/driver-track/eta"></div>
+        <!-- Dashboard socket.io — always visible -->
+        <div class="field"><label>Dashboard Socket (NestJS)</label><input type="text" id="dashSocketUrl"
+            value="http://localhost:3006"></div>
         <div class="field"><label>x-tenant-id</label><input type="text" id="tenantId"
             value="58e06c32-fcf4-482e-965e-d812b6f92d28"></div>
         <div class="field"><label>Authorization Token</label><input type="text" id="authToken"
@@ -1033,7 +1076,6 @@
             value="b728b1d8-ad2c-437a-8c54-c5a2f4b0f31e"></div>
         <div class="field"><label>Stop ID</label><input type="text" id="stopId"
             value="c554bb91-53d3-4b86-811d-26860ca341ed"></div>
-        <!-- WS-only extra params -->
         <div class="field ws-only"><label>Driver ID (WS)</label><input type="text" id="driverId"
             value="ff2c8af4-cef7-42cf-a650-25f46a111d93"></div>
         <div class="field"><label>Appointment Time (Local)</label><input type="datetime-local" id="localAppointment">
@@ -1052,15 +1094,6 @@
             <option value="10" selected>10 Minutes (Production)</option>
           </select>
         </div>
-        <div class="field http-only">
-          <label>ETA Poll Interval</label>
-          <select id="etaPollInterval">
-            <option value="5000">5 Seconds</option>
-            <option value="10000" selected>10 Seconds</option>
-            <option value="30000">30 Seconds</option>
-            <option value="60000">1 Minute</option>
-          </select>
-        </div>
         <div class="field">
           <label>Driver Speed Multiplier</label>
           <div class="slider-row">
@@ -1076,10 +1109,16 @@
         <div id="statusCard">Click map to place <span style="color:var(--accent)">Start</span> then <span
             style="color:var(--accent2)">Stop</span> markers</div>
 
-        <!-- WS connection status strip -->
+        <!-- Driver WS status -->
         <div id="wsStatusStrip">
           <div id="wsStripDot"></div>
-          <span id="wsStripText" style="color:var(--muted);font-size:10px;">Not connected</span>
+          <span id="wsStripText" style="color:var(--muted);font-size:10px;">Driver WS: Not connected</span>
+        </div>
+
+        <!-- Dashboard socket.io status — always visible -->
+        <div id="dashSocketStrip">
+          <div id="dashSocketDot"></div>
+          <span id="dashSocketText" style="font-size:10px;">Dashboard socket: disconnected</span>
         </div>
 
         <div class="progress-wrap">
@@ -1125,16 +1164,17 @@
       <div id="mapHint">Click map → set <span>① Start</span> then <span>② Stop</span> marker</div>
     </div>
 
-    <!-- Right panel: ETA snapshots -->
+    <!-- Right ETA panel -->
     <div id="etaPanel">
       <div class="eta-header">
         <div>
           <div class="section-title" style="margin-bottom:0">ETA SNAPSHOTS</div>
           <div style="font-size:10px;color:var(--muted);margin-top:2px" id="etaSnapshotCount">No data yet</div>
         </div>
-        <div class="eta-poll-badge">
-          <div class="eta-poll-dot" id="pollDot"></div>
-          <span id="pollStatus">OFF</span>
+        <!-- Dashboard socket status badge in ETA panel -->
+        <div class="dash-sock-badge">
+          <div class="ds-dot" id="dsHeaderDot"></div>
+          <span id="dsHeaderLabel">SOCKET.IO</span>
         </div>
       </div>
 
@@ -1153,6 +1193,20 @@
         </div>
       </div>
 
+      <!-- Live location from dashboard socket -->
+      <div id="liveLocCard" style="padding:10px 16px;border-bottom:1px solid var(--border);display:none;">
+        <div
+          style="font-family:'Barlow Condensed';font-size:10px;font-weight:700;letter-spacing:2px;color:var(--purple);margin-bottom:6px;">
+          LIVE LOCATION (SOCKET.IO)</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.9;">
+          Lat: <span id="llLat" style="color:var(--text)">—</span><br>
+          Lng: <span id="llLng" style="color:var(--text)">—</span><br>
+          Speed: <span id="llSpeed" style="color:var(--text)">—</span> km/h<br>
+          Heading: <span id="llHeading" style="color:var(--text)">—</span>°<br>
+          Received: <span id="llTime" style="color:var(--accent)">—</span>
+        </div>
+      </div>
+
       <div
         style="padding:8px 16px 6px;font-family:'Barlow Condensed';font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);border-bottom:1px solid var(--border);">
         SNAPSHOT HISTORY
@@ -1164,9 +1218,201 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // ─── App Mode ─────────────────────────────────────────────────
-    let currentMode = 'http'; // 'http' | 'ws'
+    // ─────────────────────────────────────────────────────────────────────────────
+    // APP STATE
+    // ─────────────────────────────────────────────────────────────────────────────
+    let currentMode = 'http';
+    let startMarker, stopMarker, driverMarker, routeLine;
+    let simulationInterval, dataInterval;
+    let progress = 0, isSimulating = false, pingCount = 0, markerStep = 0;
+    let isTruckHalted = false;
+    let routeCoords = [], routeTick = 0, totalRouteDist = 0;
 
+    // ETA state
+    let knownEtaIds = new Set();
+    let latestEtaData = null;
+
+    // Driver WS (Go gateway)
+    let driverSocket = null;
+    let driverWsConnected = false;
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // DASHBOARD SOCKET.IO — NestJS TrackingGateway
+    // This is separate from the driver WS.
+    // It connects to /tracking namespace and watches a trip room.
+    // Receives: location-update, eta-risk-alert, watching
+    // ─────────────────────────────────────────────────────────────────────────────
+    let dashSocket = null;
+    let dashConnected = false;
+
+    function initDashboardSocket() {
+      const url = document.getElementById('dashSocketUrl').value;
+      const tripId = document.getElementById('tripId').value;
+      const tenantId = document.getElementById('tenantId').value;
+
+      if (dashSocket) {
+        dashSocket.disconnect();
+        dashSocket = null;
+      }
+
+      updateDashSocketStatus('connecting', 'Connecting...');
+      addLog('dash', `Dashboard socket → ${url}/tracking ...`);
+
+      // Connect to /tracking namespace
+      dashSocket = io(url + '/tracking', {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionDelay: 2000,
+        reconnectionAttempts: 10,
+      });
+
+      // ── Connected ──────────────────────────────────────────────────────────────
+      dashSocket.on('connect', () => {
+        dashConnected = true;
+        updateDashSocketStatus('connected', 'Connected');
+        addLog('dash', `✅ Dashboard socket connected (id: ${dashSocket.id})`);
+        showAlert('dash', '🟣 Dashboard Connected', `socket.io → /tracking namespace`);
+
+        // Join the trip room so we receive events for this specific trip
+        dashSocket.emit('watch-trip', { tripId, driverId: "ff2c8af4-cef7-42cf-a650-25f46a111d93" });
+        addLog('dash', `Emitted watch-trip → room ${tenantId}:${tripId}`);
+      });
+
+      // ── Watching confirmation ──────────────────────────────────────────────────
+      dashSocket.on('watching', (data) => {
+        addLog('dash', `✅ Now watching room: ${data.room}`);
+        showAlert('info', '👁 Watching Trip', `Room: ${data.room}`);
+      });
+
+      // ── location-update — fired by NestJS after processing each ping ───────────
+      // This is the REAL driver position after ETA calculation, not raw GPS
+      dashSocket.on('location-update', (data) => {
+        addLog('dash', `📍 location-update | lat:${data.lat?.toFixed(5)} lng:${data.lng?.toFixed(5)} speed:${data.speedKmh}km/h`);
+
+        // Update live location card in ETA panel
+        document.getElementById('liveLocCard').style.display = 'block';
+        document.getElementById('llLat').textContent = data.lat?.toFixed(6) ?? '—';
+        document.getElementById('llLng').textContent = data.lng?.toFixed(6) ?? '—';
+        document.getElementById('llSpeed').textContent = data.speedKmh ?? '—';
+        document.getElementById('llHeading').textContent = data.heading ?? '—';
+        document.getElementById('llTime').textContent = new Date().toLocaleTimeString();
+
+        // Update stat bar
+        document.getElementById('statSpeed').textContent = `${data.speedKmh ?? '—'} km/h`;
+
+        // Move driver marker on map to the server-confirmed position
+        // (may differ slightly from simulator position due to processing delay)
+        if (data.lat && data.lng) {
+          const pos = { lat: data.lat, lng: data.lng };
+          if (!driverMarker) {
+            driverMarker = L.marker(pos, { icon: driverIcon }).addTo(map);
+          } else {
+            // Flash effect to show this came from the server
+            driverMarker.setLatLng(pos);
+          }
+        }
+      });
+
+      // ── eta-risk-alert — fired by NestJS when risk state changes ──────────────
+      // Triggered from DriverTrackingService.handleAtRiskEta or processEtaUpdate
+      dashSocket.on('eta-risk-alert', (data) => {
+        addLog('warn', `⚠ eta-risk-alert | trip:${data.tripId} delta:${data.deltaMinutes}min isAtRisk:${data.isAtRisk}`);
+
+        const dm = parseInt(data.deltaMinutes ?? 0);
+        const isAtRisk = data.isAtRisk;
+
+        // Show prominent alert toast
+        if (isAtRisk) {
+          showAlert('risk', '⚠ ETA AT RISK', `Driver is ${dm} min behind.\nETA: ${fmtDateTime(data.revisedEta)}`);
+        } else {
+          showAlert('ok', '✅ ETA Recovered', `Back on schedule.\nETA: ${fmtDateTime(data.revisedEta)}`);
+        }
+
+        // If this is a snapshot event, add it to the timeline
+        if (data.snapshotId || data.reason) {
+          const snap = {
+            id: data.snapshotId ?? Date.now().toString(),
+            revisedEta: data.revisedEta,
+            previousEta: data.previousEta ?? null,
+            deltaMinutes: data.deltaMinutes,
+            isAtRisk: data.isAtRisk,
+            reason: data.reason ?? 'RISK_STATE_CHANGED',
+            updatedBy: data.updatedBy ?? 'system',
+            triggeredIssueLog: data.trackingLogId ? true : false,
+            trackingLogId: data.trackingLogId,
+            createdAt: new Date().toISOString(),
+          };
+
+          if (!knownEtaIds.has(snap.id)) {
+            knownEtaIds.add(snap.id);
+            prependEtaRow(snap, true);
+            renderEtaSummary(snap);
+            document.getElementById('etaSnapshotCount').textContent =
+              `${knownEtaIds.size} snapshot${knownEtaIds.size !== 1 ? 's' : ''} (+1 new via socket)`;
+          }
+        }
+
+        // Update ETA display
+        if (data.revisedEta) {
+          document.getElementById('statEta').textContent = fmtEta(data.revisedEta);
+        }
+      });
+
+      // ── Disconnect ─────────────────────────────────────────────────────────────
+      dashSocket.on('disconnect', (reason) => {
+        dashConnected = false;
+        updateDashSocketStatus('disconnected', `Disconnected (${reason})`);
+        addLog('warn', `Dashboard socket disconnected: ${reason}`);
+      });
+
+      dashSocket.on('connect_error', (err) => {
+        updateDashSocketStatus('disconnected', 'Connection failed');
+        addLog('error', `Dashboard socket error: ${err.message}`);
+      });
+
+      dashSocket.on('reconnect', (attempt) => {
+        addLog('dash', `Dashboard socket reconnected after ${attempt} attempts`);
+        // Re-join the trip room after reconnect
+        dashSocket.emit('watch-trip', { tripId, tenantId });
+      });
+    }
+
+    function disconnectDashboardSocket() {
+      if (dashSocket) {
+        dashSocket.disconnect();
+        dashSocket = null;
+        dashConnected = false;
+      }
+      updateDashSocketStatus('disconnected', 'Disconnected');
+    }
+
+    function updateDashSocketStatus(state, text) {
+      // Left panel strip
+      const dot = document.getElementById('dashSocketDot');
+      const txt = document.getElementById('dashSocketText');
+      dot.className = state;
+      txt.textContent = `Dashboard socket: ${text}`;
+      txt.style.color = state === 'connected' ? 'var(--purple)'
+        : state === 'connecting' ? 'var(--accent3)'
+          : 'var(--accent2)';
+
+      // Top bar pill
+      const pillDot = document.getElementById('dashPillDot');
+      const pillLabel = document.getElementById('dashPillLabel');
+      pillDot.className = `dot ${state === 'connected' ? 'active' : state === 'connecting' ? 'warn' : 'error'}`;
+      pillDot.style.background = state === 'connected' ? 'var(--purple)' : '';
+      pillLabel.textContent = state.toUpperCase();
+
+      // ETA panel header badge
+      const hDot = document.getElementById('dsHeaderDot');
+      const hLabel = document.getElementById('dsHeaderLabel');
+      hDot.className = `ds-dot ${state === 'connected' ? 'live' : state === 'connecting' ? '' : 'error'}`;
+      hLabel.textContent = state === 'connected' ? 'LIVE' : state === 'connecting' ? 'CONNECTING' : 'OFFLINE';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MODE TOGGLE
+    // ─────────────────────────────────────────────────────────────────────────────
     function setMode(mode) {
       currentMode = mode;
       document.body.classList.toggle('ws-mode', mode === 'ws');
@@ -1174,50 +1420,44 @@
       document.getElementById('modeWs').className = 'mode-btn' + (mode === 'ws' ? ' active-ws' : '');
       document.getElementById('wsPill').style.display = mode === 'ws' ? 'flex' : 'none';
       addLog('info', `Switched to ${mode.toUpperCase()} mode`);
-      if (isSimulating) { stopTracking(); }
+      if (isSimulating) stopTracking();
     }
 
-    // ─── Sim State ─────────────────────────────────────────────────
-    let startMarker, stopMarker, driverMarker, routeLine;
-    let simulationInterval, dataInterval, etaPollInterval;
-    let progress = 0, isSimulating = false, pingCount = 0, markerStep = 0;
-    let isTruckHalted = false;
-    let routeCoords = [], routeTick = 0, totalRouteDist = 0;
-
-    // ─── ETA State ─────────────────────────────────────────────────
-    let knownEtaIds = new Set();
-    let latestEtaData = null;
-    let etaPollingActive = false;
-
-    // ─── WebSocket State ───────────────────────────────────────────
-    let socket = null;
-    let wsConnected = false;
-
-    // ─── Map ───────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MAP
+    // ─────────────────────────────────────────────────────────────────────────────
     const map = L.map('map', { zoomControl: false }).setView([27.6710, 85.3120], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     setTimeout(() => map.invalidateSize(), 200);
 
-    // ─── Icons ─────────────────────────────────────────────────────
     const mkIcon = (color, size, label) => L.divIcon({
       className: '',
       html: `<div style="position:relative;width:${size}px;height:${size}px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 12px ${color}88;">
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(45deg);font-size:${Math.floor(size * 0.35)}px;font-weight:800;color:rgba(0,0,0,0.8);font-family:'Barlow Condensed',sans-serif;">${label}</div>
-      </div>`,
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform:rotate(45deg);font-size:${Math.floor(size * 0.35)}px;font-weight:800;color:rgba(0,0,0,0.8);font-family:'Barlow Condensed',sans-serif;">${label}</div>
+  </div>`,
       iconSize: [size, size], iconAnchor: [size / 2, size], popupAnchor: [0, -size],
     });
     const driverIcon = L.divIcon({
       className: '',
       html: `<div style="position:relative;width:28px;height:28px;">
-        <div style="width:28px;height:28px;background:#3d9eff;border-radius:50%;border:3px solid white;box-shadow:0 0 0 3px rgba(61,158,255,0.3),0 4px 16px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:13px;">🚛</div>
-        <div style="position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(61,158,255,0.4);animation:driverPulse 2s infinite;"></div>
-      </div>
-      <style>@keyframes driverPulse{0%{transform:scale(1);opacity:0.8}100%{transform:scale(1.8);opacity:0}}</style>`,
+    <div style="width:28px;height:28px;background:#3d9eff;border-radius:50%;border:3px solid white;box-shadow:0 0 0 3px rgba(61,158,255,0.3),0 4px 16px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:13px;">🚛</div>
+    <div style="position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(61,158,255,0.4);animation:driverPulse 2s infinite;"></div>
+  </div>
+  <style>@keyframes driverPulse{0%{transform:scale(1);opacity:0.8}100%{transform:scale(1.8);opacity:0}}</style>`,
       iconSize: [28, 28], iconAnchor: [14, 14],
     });
 
-    // ─── Map click ─────────────────────────────────────────────────
+    // Server-confirmed marker (purple — comes from socket.io, not local sim)
+    const serverDriverIcon = L.divIcon({
+      className: '',
+      html: `<div style="position:relative;width:28px;height:28px;">
+    <div style="width:28px;height:28px;background:#c084fc;border-radius:50%;border:3px solid white;box-shadow:0 0 0 3px rgba(192,132,252,0.3),0 4px 16px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;font-size:13px;">📡</div>
+  </div>`,
+      iconSize: [28, 28], iconAnchor: [14, 14],
+    });
+    let serverMarker = null; // separate marker for server-confirmed position
+
     map.on('click', (e) => {
       if (isSimulating) { addLog('warn', 'Stop simulation before moving markers'); return; }
       if (markerStep === 0) {
@@ -1238,8 +1478,8 @@
     async function updateRoute() {
       if (!startMarker || !stopMarker) return;
       const s = startMarker.getLatLng(), e = stopMarker.getLatLng();
-      if (routeLine) { routeLine.setLatLngs([s, e]); }
-      else { routeLine = L.polyline([s, e], { color: '#3d9eff', weight: 3, dashArray: '8,12', opacity: 0.4 }).addTo(map); }
+      if (routeLine) routeLine.setLatLngs([s, e]);
+      else routeLine = L.polyline([s, e], { color: '#3d9eff', weight: 3, dashArray: '8,12', opacity: 0.4 }).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
       updateHint('⏳ Fetching road route...');
       try {
@@ -1255,228 +1495,45 @@
         addLog('ok', `Road route loaded — ${totalRouteDist.toFixed(1)}km | ${routeCoords.length} waypoints`);
         updateHint('Markers set. Press <span>▶ Start</span> to begin');
       } catch (err) {
-        routeCoords = [s, e];
+        routeCoords = [startMarker.getLatLng(), stopMarker.getLatLng()];
         totalRouteDist = haversineKm(s.lat, s.lng, e.lat, e.lng);
-        addLog('warn', `OSRM unavailable — straight line fallback`);
+        addLog('warn', 'OSRM unavailable — straight line fallback');
         updateHint('Markers set. Press <span>▶ Start</span> (straight line fallback)');
       }
       routeTick = 0;
     }
 
-    // ─── Helpers ───────────────────────────────────────────────────
-    function haversineKm(lat1, lng1, lat2, lng2) {
-      const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-    function calcHeading(a, b) {
-      const la1 = a.lat * Math.PI / 180, lo1 = a.lng * Math.PI / 180, la2 = b.lat * Math.PI / 180, lo2 = b.lng * Math.PI / 180, dlo = lo2 - lo1;
-      const y = Math.sin(dlo) * Math.cos(la2), x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dlo);
-      return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
-    }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────────────
+    function haversineKm(lat1, lng1, lat2, lng2) { const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180; const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2; return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); }
+    function calcHeading(a, b) { const la1 = a.lat * Math.PI / 180, lo1 = a.lng * Math.PI / 180, la2 = b.lat * Math.PI / 180, lo2 = b.lng * Math.PI / 180, dlo = lo2 - lo1; const y = Math.sin(dlo) * Math.cos(la2), x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dlo); return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360; }
     function fmtTime(d) { return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
     function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
     function fmtEta(d) { const diff = Math.round((new Date(d) - Date.now()) / 60000); if (diff <= 0) return 'NOW'; if (diff < 60) return `${diff}m`; return `${Math.floor(diff / 60)}h ${diff % 60}m`; }
     function updateHint(html) { document.getElementById('mapHint').innerHTML = html; }
-    function getHeaders() {
-      return { 'Content-Type': 'application/json', 'x-tenant-id': document.getElementById('tenantId').value, 'Authorization': document.getElementById('authToken').value };
-    }
+    function getHeaders() { return { 'Content-Type': 'application/json', 'x-tenant-id': document.getElementById('tenantId').value, 'Authorization': document.getElementById('authToken').value }; }
 
-    // ─── Log feed ──────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
+    // LOG FEED
+    // ─────────────────────────────────────────────────────────────────────────────
     function addLog(type, msg) {
       const feed = document.getElementById('logFeed');
       const entry = document.createElement('div');
       entry.className = `log-entry ${type}`;
-      const tagMap = { ok: 'OK', error: 'ERR', warn: 'WARN', info: 'INFO', eta: 'ETA', ws: 'WS' };
-      const tagClass = type === 'ok' ? 'ok' : type === 'error' ? 'err' : type === 'warn' ? 'warn' : type === 'eta' ? 'eta' : type === 'ws' ? 'ws' : 'info';
+      const tagMap = { ok: 'OK', error: 'ERR', warn: 'WARN', info: 'INFO', eta: 'ETA', ws: 'WS', dash: 'DASH' };
+      const tagClass = type === 'ok' ? 'ok' : type === 'error' ? 'err' : type === 'warn' ? 'warn' : type === 'eta' ? 'eta' : type === 'ws' ? 'ws' : type === 'dash' ? 'dash' : 'info';
       entry.innerHTML = `<span class="log-time">${fmtTime(new Date())}</span><span class="log-msg"><span class="tag tag-${tagClass}">${tagMap[type] || 'INFO'}</span>${msg}</span>`;
       feed.insertBefore(entry, feed.firstChild);
       while (feed.children.length > 120) feed.removeChild(feed.lastChild);
     }
     function setStatus(type, html) { const el = document.getElementById('statusCard'); el.className = type; el.innerHTML = html; }
+    function showAlert(type, title, body) { const c = document.getElementById('alertContainer'); const t = document.createElement('div'); t.className = `alert-toast ${type}`; t.innerHTML = `<div class="alert-title">${title}</div><div class="alert-body">${body}</div>`; c.appendChild(t); setTimeout(() => { try { c.removeChild(t); } catch (_) { } }, 5000); }
 
-    // ─── Toast alerts ──────────────────────────────────────────────
-    function showAlert(type, title, body) {
-      const container = document.getElementById('alertContainer');
-      const toast = document.createElement('div');
-      toast.className = `alert-toast ${type}`;
-      toast.innerHTML = `<div class="alert-title">${title}</div><div class="alert-body">${body}</div>`;
-      container.appendChild(toast);
-      setTimeout(() => { try { container.removeChild(toast); } catch (_) { } }, 5000);
-    }
-
-    // ─── WebSocket logic ───────────────────────────────────────────
-    function initSocket() {
-      if (socket) { try { socket.close(); } catch (_) { } }
-
-      const baseUrl = document.getElementById('wsUrl').value;
-      const tokenFull = document.getElementById('authToken').value;
-      const token = tokenFull.startsWith('Bearer ') ? tokenFull.substring(7) : tokenFull;
-      const tripId = document.getElementById('tripId').value;
-      const driverId = document.getElementById('driverId').value;
-
-      const wsUrl = `${baseUrl}?token=${token}&tripId=${tripId}&driverId=${driverId}`;
-
-      updateWsStatus('connecting', 'Connecting...');
-      addLog('ws', `Connecting to ${baseUrl}...`);
-
-      socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        wsConnected = true;
-        updateWsStatus('connected', 'Connected');
-        addLog('ws', `✅ WebSocket connected`);
-        setStatus('ok', '✅ WS Connected — simulation active');
-      };
-
-      socket.onclose = (event) => {
-        wsConnected = false;
-        updateWsStatus('disconnected', `Closed (${event.code})`);
-        addLog('warn', `❌ WS closed: code=${event.code} ${event.reason ? '— ' + event.reason : ''}`);
-        if (isSimulating) setStatus('warn', '⚠️ WS connection lost');
-      };
-
-      socket.onerror = () => {
-        updateWsStatus('disconnected', 'Error');
-        addLog('error', 'WS error occurred');
-        setStatus('error', '❌ WS Error — check URL and server');
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'ack') {
-            addLog('ws', `✅ ACK | stream_id: ${msg.data?.stream_id || 'N/A'}`);
-          } else if (msg.type === 'error') {
-            addLog('error', `WS server error: ${msg.data?.reason || 'Unknown'}`);
-            setStatus('error', `⚠️ ${msg.data?.reason}`);
-          } else if (msg.type === 'eta_update') {
-            addLog('eta', `🕒 ETA update via WS: ${msg.payload?.etaMinutes} mins`);
-            document.getElementById('statEta').textContent = `${msg.payload?.etaMinutes}m`;
-          } else {
-            addLog('ws', `← msg type: ${msg.type}`);
-          }
-        } catch (e) {
-          addLog('warn', `WS non-JSON message received`);
-        }
-      };
-    }
-
-    function updateWsStatus(state, text) {
-      const dot = document.getElementById('wsStripDot');
-      const stripTxt = document.getElementById('wsStripText');
-      const pillDot = document.getElementById('wsPillDot');
-      const pillLabel = document.getElementById('wsPillLabel');
-
-      dot.className = state;
-      stripTxt.textContent = text;
-      stripTxt.style.color = state === 'connected' ? 'var(--accent)' : state === 'connecting' ? 'var(--accent3)' : 'var(--accent2)';
-      pillDot.className = `dot ${state === 'connected' ? 'active' : state === 'connecting' ? 'warn' : 'error'}`;
-      pillLabel.textContent = state.toUpperCase();
-    }
-
-    // ─── Send ping — routes to HTTP or WS ─────────────────────────
-    async function sendPing() {
-      if (!driverMarker || !stopMarker || !routeCoords.length) return;
-      const pos = driverMarker.getLatLng();
-      const stop = stopMarker.getLatLng();
-      const apptISO = new Date(document.getElementById('localAppointment').value).toISOString();
-      const nextWpt = routeCoords[Math.min(routeTick + 1, routeCoords.length - 1)];
-      const heading = Math.round(calcHeading(pos, nextWpt));
-
-      // Compute remaining distance along route
-      const remaining = routeCoords.slice(routeTick);
-      let distRemaining = 0;
-      for (let i = 0; i < remaining.length - 1; i++) distRemaining += haversineKm(remaining[i].lat, remaining[i].lng, remaining[i + 1].lat, remaining[i + 1].lng);
-      const speedKmh = 25 + Math.random() * 15;
-      const travelMins = distRemaining > 0 ? (distRemaining / speedKmh) * 60 : 0;
-      const etaDate = new Date(Date.now() + travelMins * 60000);
-
-      document.getElementById('statSpeed').textContent = `${(Math.round(speedKmh * 10) / 10)} km/h`;
-      document.getElementById('statEta').textContent = fmtEta(etaDate);
-
-      if (currentMode === 'ws') {
-        await sendPingWS(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate);
-      } else {
-        await sendPingHTTP(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate);
-      }
-    }
-
-    async function sendPingHTTP(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate) {
-      const payload = {
-        tripId: document.getElementById('tripId').value,
-        lat: pos.lat, lng: pos.lng,
-        speedKmh: Math.round(speedKmh * 10) / 10,
-        heading,
-        etaSource: 'GPS_AUTO',
-        nextStop: {
-          stopId: document.getElementById('stopId').value,
-          lat: stop.lat, lng: stop.lng,
-          address: "Patan Durbar Square, Lalitpur",
-          appointmentTime: apptISO,
-          type: 'delivery',
-        },
-      };
-      try {
-        const res = await fetch(document.getElementById('apiUrl').value, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
-        pingCount++;
-        document.getElementById('statPings').textContent = pingCount;
-        const resText = await res.text();
-        let resJson; try { resJson = JSON.parse(resText); } catch (_) { }
-        if (res.ok) {
-          setStatus('ok', `✅ Ping #${pingCount} | ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
-          addLog('ok', `Ping #${pingCount} → HTTP ${res.status} | lat:${pos.lat.toFixed(4)} | ETA ${fmtEta(etaDate)} | ${distRemaining.toFixed(1)}km left`);
-        } else {
-          setStatus('error', `⚠️ HTTP ${res.status} — ${resJson?.message || resText?.slice(0, 80)}`);
-          addLog('error', `Ping #${pingCount} → HTTP ${res.status}: ${resJson?.message || resText?.slice(0, 60)}`);
-        }
-      } catch (err) {
-        setStatus('error', `❌ Network error: ${err.message}`);
-        addLog('error', `Network error: ${err.message}`);
-      }
-    }
-
-    async function sendPingWS(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate) {
-      if (!wsConnected || !socket) {
-        addLog('error', 'Cannot ping: WS not connected');
-        setStatus('error', '❌ WS Disconnected — cannot ping');
-        return;
-      }
-      const payload = {
-        type: 'location_ping',
-        payload: {
-          trip_id: document.getElementById('tripId').value,
-          lat: pos.lat, lng: pos.lng,
-          speed_kmh: Math.round(speedKmh * 10) / 10,
-          heading,
-          accuracy_metres: 5.0,
-          eta_source: 'GPS_AUTO',
-          next_stop: {
-            stop_id: document.getElementById('stopId').value,
-            lat: stop.lat, lng: stop.lng,
-            address: "Patan Durbar Square, Lalitpur",
-            appointment_time: apptISO,
-            type: 'delivery',
-          },
-        }
-      };
-      try {
-        socket.send(JSON.stringify(payload));
-        pingCount++;
-        document.getElementById('statPings').textContent = pingCount;
-        setStatus('ok', `✅ WS Ping #${pingCount} sent | ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
-        addLog('ws', `Ping #${pingCount} → WS sent | lat:${pos.lat.toFixed(4)} | ETA ${fmtEta(etaDate)} | ${distRemaining.toFixed(1)}km left`);
-      } catch (err) {
-        addLog('error', `WS send error: ${err.message}`);
-        setStatus('error', `❌ WS send failed: ${err.message}`);
-      }
-    }
-
-    // ─── ETA Panel rendering ───────────────────────────────────────
-    function dotClass(reason) {
-      const m = { INITIAL_SET: 'dot-initial', TRAFFIC: 'dot-traffic', PERIODIC: 'dot-periodic', RISK_STATE_CHANGED: 'dot-risk', MANUAL_OVERRIDE: 'dot-manual', APPOINTMENT_CHANGED: 'dot-appt' };
-      return m[reason] || 'dot-periodic';
-    }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ETA PANEL RENDERING
+    // ─────────────────────────────────────────────────────────────────────────────
+    function dotClass(reason) { const m = { INITIAL_SET: 'dot-initial', TRAFFIC: 'dot-traffic', PERIODIC: 'dot-periodic', RISK_STATE_CHANGED: 'dot-risk', MANUAL_OVERRIDE: 'dot-manual', APPOINTMENT_CHANGED: 'dot-appt' }; return m[reason] || 'dot-periodic'; }
 
     function renderEtaSummary(snap) {
       const big = document.getElementById('etaBigDisplay');
@@ -1496,6 +1553,7 @@
       document.getElementById('metaPrev').textContent = snap.previousEta ? fmtDateTime(snap.previousEta) : 'N/A';
       document.getElementById('metaReason').textContent = snap.reason || '—';
       document.getElementById('metaUpdatedBy').textContent = snap.updatedBy || '—';
+      document.getElementById('statEta').textContent = fmtEta(snap.revisedEta);
     }
 
     function prependEtaRow(snap, isNew) {
@@ -1505,98 +1563,152 @@
       const isRisk = snap.isAtRisk || snap.reason === 'RISK_STATE_CHANGED';
       row.className = `eta-row${isNew ? ' new-entry' : ''}${isRisk ? ' risk-entry' : ''}`;
       row.innerHTML = `
-        <div class="eta-row-dot ${dotClass(snap.reason)}" style="margin-top:3px"></div>
-        <div class="eta-row-body">
-          <div class="eta-row-reason reason-${snap.reason}">${snap.reason || 'UNKNOWN'}</div>
-          <div class="eta-row-time">${fmtDateTime(snap.revisedEta)}</div>
-          <div class="eta-row-prev">
-            ${snap.previousEta ? `← ${fmtDateTime(snap.previousEta)}` : 'First snapshot'}
-            &nbsp;•&nbsp;
-            <span style="color:${dm > 30 ? 'var(--accent2)' : dm > 0 ? 'var(--accent3)' : 'var(--accent)'}">${dm > 0 ? '-' : '+'}${Math.abs(dm)}min</span>
-            ${snap.isAtRisk ? ' <span style="color:var(--accent2)">⚠ RISK</span>' : ''}
-            ${snap.triggeredIssueLog ? ' <span style="color:var(--purple)">📋 Issue</span>' : ''}
-          </div>
-        </div>
-        <div class="eta-row-when">${fmtTime(snap.createdAt)}</div>`;
+    <div class="eta-row-dot ${dotClass(snap.reason)}" style="margin-top:3px"></div>
+    <div class="eta-row-body">
+      <div class="eta-row-reason reason-${snap.reason}">${snap.reason || 'UNKNOWN'}</div>
+      <div class="eta-row-time">${fmtDateTime(snap.revisedEta)}</div>
+      <div class="eta-row-prev">
+        ${snap.previousEta ? `← ${fmtDateTime(snap.previousEta)}` : 'First snapshot'}
+        &nbsp;•&nbsp;
+        <span style="color:${dm > 30 ? 'var(--accent2)' : dm > 0 ? 'var(--accent3)' : 'var(--accent)'}">${dm > 0 ? '-' : '+'}${Math.abs(dm)}min</span>
+        ${snap.isAtRisk ? ' <span style="color:var(--accent2)">⚠ RISK</span>' : ''}
+        ${snap.triggeredIssueLog ? ' <span style="color:var(--purple)">📋 Issue</span>' : ''}
+      </div>
+    </div>
+    <div class="eta-row-when">${fmtTime(snap.createdAt)}</div>`;
       timeline.insertBefore(row, timeline.firstChild);
     }
 
-    // ─── ETA API polling (HTTP GET — always active regardless of ping mode) ──
-    async function pollEtaSnapshots() {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // DRIVER WS (Go gateway)
+    // ─────────────────────────────────────────────────────────────────────────────
+    function initDriverSocket() {
+      if (driverSocket) { try { driverSocket.close(); } catch (_) { } }
+      const baseUrl = document.getElementById('wsUrl').value;
+      const tokenFull = document.getElementById('authToken').value;
+      const token = tokenFull.startsWith('Bearer ') ? tokenFull.substring(7) : tokenFull;
       const tripId = document.getElementById('tripId').value;
-      const stopId = document.getElementById('stopId').value;
-      const base = document.getElementById('etaApiBase').value;
-      const url = `${base}/${tripId}/${stopId}`;
-      const pollDot = document.getElementById('pollDot');
-      const pollSt = document.getElementById('pollStatus');
-      pollDot.className = 'eta-poll-dot polling';
-      pollSt.textContent = 'POLLING';
+      const driverId = document.getElementById('driverId').value;
+      const wsUrl = `${baseUrl}?token=${token}&tripId=${tripId}&driverId=${driverId}`;
+
+      updateWsStatus('connecting', 'Connecting...');
+      addLog('ws', `Driver WS → ${baseUrl}...`);
+      driverSocket = new WebSocket(wsUrl);
+
+      driverSocket.onopen = () => {
+        driverWsConnected = true;
+        updateWsStatus('connected', 'Connected');
+        addLog('ws', `✅ Driver WS connected`);
+        setStatus('ok', '✅ Driver WS Connected — simulation active');
+      };
+      driverSocket.onclose = (ev) => {
+        driverWsConnected = false;
+        updateWsStatus('disconnected', `Closed (${ev.code})`);
+        addLog('warn', `Driver WS closed: code=${ev.code}`);
+      };
+      driverSocket.onerror = () => {
+        updateWsStatus('disconnected', 'Error');
+        addLog('error', 'Driver WS error');
+        setStatus('error', '❌ Driver WS Error');
+      };
+      driverSocket.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'ack') addLog('ws', `✅ ACK | stream_id: ${msg.data?.stream_id || 'N/A'}`);
+          else if (msg.type === 'error') addLog('error', `WS error: ${msg.data?.reason}`);
+          else addLog('ws', `← ${msg.type}`);
+        } catch (_) { addLog('warn', 'WS non-JSON'); }
+      };
+    }
+
+    function updateWsStatus(state, text) {
+      const dot = document.getElementById('wsStripDot');
+      const txt = document.getElementById('wsStripText');
+      dot.className = state;
+      txt.textContent = `Driver WS: ${text}`;
+      txt.style.color = state === 'connected' ? 'var(--accent)' : state === 'connecting' ? 'var(--accent3)' : 'var(--accent2)';
+      const pillDot = document.getElementById('wsPillDot');
+      const pillLabel = document.getElementById('wsPillLabel');
+      pillDot.className = `dot ${state === 'connected' ? 'active' : state === 'connecting' ? 'warn' : 'error'}`;
+      pillLabel.textContent = state.toUpperCase();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SEND PING — routes to HTTP or Driver WS
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function sendPing() {
+      if (!driverMarker || !stopMarker || !routeCoords.length) return;
+      const pos = driverMarker.getLatLng();
+      const stop = stopMarker.getLatLng();
+      const apptISO = new Date(document.getElementById('localAppointment').value).toISOString();
+      const nextWpt = routeCoords[Math.min(routeTick + 1, routeCoords.length - 1)];
+      const heading = Math.round(calcHeading(pos, nextWpt));
+      const remaining = routeCoords.slice(routeTick);
+      let distRemaining = 0;
+      for (let i = 0; i < remaining.length - 1; i++) distRemaining += haversineKm(remaining[i].lat, remaining[i].lng, remaining[i + 1].lat, remaining[i + 1].lng);
+      const speedKmh = 25 + Math.random() * 15;
+      const travelMins = distRemaining > 0 ? (distRemaining / speedKmh) * 60 : 0;
+      const etaDate = new Date(Date.now() + travelMins * 60000);
+
+      if (currentMode === 'ws') await sendPingWS(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate);
+      else await sendPingHTTP(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate);
+    }
+
+    async function sendPingHTTP(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate) {
+      const payload = {
+        tripId: document.getElementById('tripId').value,
+        lat: pos.lat, lng: pos.lng,
+        speedKmh: Math.round(speedKmh * 10) / 10, heading,
+        etaSource: 'GPS_AUTO',
+        nextStop: {
+          stopId: document.getElementById('stopId').value,
+          lat: stop.lat, lng: stop.lng,
+          address: "Patan Durbar Square, Lalitpur",
+          appointmentTime: apptISO, type: 'delivery',
+        },
+      };
       try {
-        const res = await fetch(url, { headers: getHeaders() });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const snapshots = Array.isArray(data) ? data : (data.data || data.snapshots || [data]);
-        if (!snapshots.length) { pollDot.className = 'eta-poll-dot ok'; pollSt.textContent = 'OK (0)'; return; }
-        snapshots.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        let newCount = 0;
-        for (const snap of snapshots) {
-          if (!knownEtaIds.has(snap.id)) {
-            knownEtaIds.add(snap.id);
-            newCount++;
-            prependEtaRow(snap, true);
-            latestEtaData = snap;
-            const dm = parseInt(snap.deltaMinutes);
-            if (snap.reason === 'RISK_STATE_CHANGED') {
-              dm > 0
-                ? showAlert('risk', '⚠ ETA AT RISK', `Driver is ${dm} min behind.\nETA: ${fmtDateTime(snap.revisedEta)}`)
-                : showAlert('ok', '✅ ETA Recovered', `Back on schedule.\nETA: ${fmtDateTime(snap.revisedEta)}`);
-              addLog(dm > 0 ? 'warn' : 'ok', `ETA RISK_STATE_CHANGED — ${dm > 0 ? `driver ${dm}min late` : 'back on track'} | ETA ${fmtDateTime(snap.revisedEta)}`);
-            } else if (snap.reason === 'INITIAL_SET') {
-              showAlert('info', '📍 ETA Initialized', `First snapshot.\nETA: ${fmtDateTime(snap.revisedEta)} (${dm > 0 ? '+' : ''}${dm}min)`);
-              addLog('info', `ETA initialized — ${fmtDateTime(snap.revisedEta)} | ${dm}min vs appt`);
-            } else if (snap.reason === 'TRAFFIC' && Math.abs(dm) >= 10) {
-              addLog('eta', `ETA shift (TRAFFIC) — ${dm > 0 ? '-' : ''}${Math.abs(dm)}min | ${fmtDateTime(snap.revisedEta)}`);
-            }
-            if (snap.triggeredIssueLog) {
-              showAlert('risk', '📋 Issue Logged', `TrackingLog created.\nReason: ${snap.reason} | ${dm}min late`);
-              addLog('warn', `Issue log triggered — trackingLogId: ${snap.trackingLogId || 'N/A'}`);
-            }
-          }
+        const res = await fetch(document.getElementById('apiUrl').value, { method: 'POST', headers: getHeaders(), body: JSON.stringify(payload) });
+        pingCount++;
+        document.getElementById('statPings').textContent = pingCount;
+        if (res.ok) {
+          setStatus('ok', `✅ Ping #${pingCount} | ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
+          addLog('ok', `Ping #${pingCount} → HTTP ${res.status} | lat:${pos.lat.toFixed(4)} | ${distRemaining.toFixed(1)}km left`);
+        } else {
+          const txt = await res.text();
+          setStatus('error', `⚠ HTTP ${res.status}`);
+          addLog('error', `Ping #${pingCount} → HTTP ${res.status}: ${txt.slice(0, 60)}`);
         }
-        if (snapshots.length) renderEtaSummary(snapshots[snapshots.length - 1]);
-        document.getElementById('etaSnapshotCount').textContent = `${knownEtaIds.size} snapshot${knownEtaIds.size !== 1 ? 's' : ''}${newCount ? ' (+' + newCount + ' new)' : ''}`;
-        document.getElementById('etaApiStatus').textContent = 'LIVE';
-        document.getElementById('etaApiStatus').style.color = 'var(--accent)';
-        document.getElementById('etaApiDot').className = 'dot active';
-        pollDot.className = 'eta-poll-dot ok';
-        pollSt.textContent = `OK (${knownEtaIds.size})`;
       } catch (err) {
-        pollDot.className = 'eta-poll-dot error';
-        pollSt.textContent = 'ERR';
-        document.getElementById('etaApiStatus').textContent = 'ERROR';
-        document.getElementById('etaApiStatus').style.color = 'var(--accent2)';
-        document.getElementById('etaApiDot').className = 'dot error';
-        addLog('error', `ETA poll failed: ${err.message}`);
+        setStatus('error', `❌ Network error: ${err.message}`);
+        addLog('error', `Network error: ${err.message}`);
       }
     }
 
-    function startEtaPolling() {
-      if (etaPollingActive) return;
-      etaPollingActive = true;
-      pollEtaSnapshots();
-      const interval = parseInt(document.getElementById('etaPollInterval').value);
-      etaPollInterval = setInterval(pollEtaSnapshots, interval);
-      addLog('info', `ETA polling started — every ${interval / 1000}s`);
+    async function sendPingWS(pos, stop, heading, speedKmh, apptISO, distRemaining, etaDate) {
+      if (!driverWsConnected || !driverSocket) { addLog('error', 'Cannot ping: Driver WS not connected'); return; }
+      const payload = {
+        type: 'location_ping', payload: {
+          trip_id: document.getElementById('tripId').value,
+          lat: pos.lat, lng: pos.lng,
+          speed_kmh: Math.round(speedKmh * 10) / 10, heading, accuracy_metres: 5.0,
+          next_stop: { stop_id: document.getElementById('stopId').value, lat: stop.lat, lng: stop.lng, address: "Patan Durbar Square, Lalitpur", appointment_time: apptISO, type: 'delivery' },
+        }
+      };
+      try {
+        driverSocket.send(JSON.stringify(payload));
+        pingCount++;
+        document.getElementById('statPings').textContent = pingCount;
+        setStatus('ok', `✅ WS Ping #${pingCount} | ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
+        addLog('ws', `Ping #${pingCount} → Driver WS sent | lat:${pos.lat.toFixed(4)} | ${distRemaining.toFixed(1)}km left`);
+      } catch (err) {
+        addLog('error', `Driver WS send error: ${err.message}`);
+      }
     }
 
-    function stopEtaPolling() {
-      clearInterval(etaPollInterval);
-      etaPollingActive = false;
-      document.getElementById('pollDot').className = 'eta-poll-dot';
-      document.getElementById('pollStatus').textContent = 'OFF';
-    }
-
-    // ─── Simulation tick ───────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SIMULATION TICK
+    // ─────────────────────────────────────────────────────────────────────────────
     function tickSimulation() {
       if (!routeCoords.length || isTruckHalted) return;
       const steps = Math.max(1, Math.floor(parseInt(document.getElementById('simSpeed').value) / 10));
@@ -1620,7 +1732,9 @@
       document.getElementById('progressBar').style.width = `${pct}%`;
     }
 
-    // ─── Start / Stop / Reset ──────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────────
+    // START / STOP / RESET
+    // ─────────────────────────────────────────────────────────────────────────────
     function startTracking() {
       if (markerStep < 2) { addLog('warn', 'Place both markers first'); setStatus('warn', '⚠️ Place Start and Stop markers first'); return; }
       if (!routeCoords.length) { addLog('warn', 'Route still loading'); setStatus('warn', '⏳ Route still loading...'); return; }
@@ -1641,26 +1755,20 @@
 
       const ms = Math.max(parseFloat(document.getElementById('intervalMins').value) * 60000, 2000);
 
+      // Always init dashboard socket.io for receiving real-time updates
+      initDashboardSocket();
+
       if (currentMode === 'ws') {
-        // Init WebSocket, delay first ping until connected
-        initSocket();
+        initDriverSocket();
         addLog('info', `Started (WS mode) — ping every ${ms / 1000}s`);
-        setStatus('ok', '🔌 Connecting WebSocket...');
+        setStatus('ok', '🔌 Connecting Driver WS...');
         setTimeout(() => {
-          if (wsConnected) {
-            sendPing();
-            dataInterval = setInterval(sendPing, ms);
-          } else {
-            addLog('error', 'WS failed to connect within 1.5s — pings disabled');
-            setStatus('error', '❌ WS connect failed');
-          }
+          if (driverWsConnected) { sendPing(); dataInterval = setInterval(sendPing, ms); }
+          else { addLog('error', 'Driver WS failed to connect within 1.5s'); setStatus('error', '❌ Driver WS connect failed'); }
         }, 1500);
-        // ETA polling always runs regardless of transport mode
-        startEtaPolling();
       } else {
         sendPing();
         dataInterval = setInterval(sendPing, ms);
-        startEtaPolling();
         setStatus('ok', '🚀 Simulation started (HTTP mode)');
         addLog('info', `Started (HTTP mode) — ping every ${ms / 1000}s`);
       }
@@ -1670,14 +1778,19 @@
       clearInterval(simulationInterval);
       clearInterval(dataInterval);
       isSimulating = false;
-      stopEtaPolling();
-      // Close WS if in WS mode
-      if (currentMode === 'ws' && socket) {
-        try { socket.close(); } catch (_) { }
-        socket = null;
-        wsConnected = false;
+
+      // Disconnect driver WS if in WS mode
+      if (currentMode === 'ws' && driverSocket) {
+        try { driverSocket.close(); } catch (_) { }
+        driverSocket = null;
+        driverWsConnected = false;
         updateWsStatus('disconnected', 'Stopped');
       }
+
+      // Keep dashboard socket alive — dispatcher still watching
+      // Only disconnect if user explicitly resets
+      addLog('dash', 'Simulation stopped — dashboard socket still watching');
+
       document.getElementById('liveDot').classList.remove('active');
       document.getElementById('liveLabel').textContent = 'PAUSED';
       document.getElementById('startBtn').style.display = 'block';
@@ -1690,8 +1803,9 @@
 
     function resetAll() {
       stopTracking();
-      [startMarker, stopMarker, driverMarker, routeLine].forEach(m => { if (m) try { map.removeLayer(m) } catch (_) { } });
-      startMarker = stopMarker = driverMarker = routeLine = null;
+      disconnectDashboardSocket();
+      [startMarker, stopMarker, driverMarker, routeLine, serverMarker].forEach(m => { if (m) try { map.removeLayer(m) } catch (_) { } });
+      startMarker = stopMarker = driverMarker = routeLine = serverMarker = null;
       markerStep = 0; progress = 0; pingCount = 0; routeCoords = []; routeTick = 0; totalRouteDist = 0;
       knownEtaIds.clear(); latestEtaData = null;
       document.getElementById('statProgress').textContent = '0%';
@@ -1704,15 +1818,12 @@
       document.getElementById('etaSnapshotCount').textContent = 'No data yet';
       document.getElementById('etaBigDisplay').textContent = '— : —';
       document.getElementById('etaDeltaBadge').textContent = '—';
-      document.getElementById('etaApiStatus').textContent = 'IDLE';
-      document.getElementById('etaApiStatus').style.color = 'var(--muted)';
-      document.getElementById('etaApiDot').className = 'dot';
+      document.getElementById('liveLocCard').style.display = 'none';
       setStatus('', 'Click map to place <span style="color:var(--accent)">Start</span> then <span style="color:var(--accent2)">Stop</span> markers');
       updateHint('Click map → set <span>① Start</span> then <span>② Stop</span> marker');
       addLog('info', 'Reset — all cleared');
     }
 
-    // ─── Halt truck ────────────────────────────────────────────────
     function toggleHalt() {
       isTruckHalted = !isTruckHalted;
       const btn = document.getElementById('haltBtn');
@@ -1733,20 +1844,23 @@
       }
     }
 
-    // ─── Speed slider ──────────────────────────────────────────────
-    document.getElementById('simSpeed').addEventListener('input', e => { document.getElementById('speedLabel').textContent = e.target.value + 'x'; });
+    // ─────────────────────────────────────────────────────────────────────────────
+    // INIT
+    // ─────────────────────────────────────────────────────────────────────────────
+    document.getElementById('simSpeed').addEventListener('input', e => {
+      document.getElementById('speedLabel').textContent = e.target.value + 'x';
+    });
 
-    // ─── Default appointment (+1hr) ────────────────────────────────
     const d = new Date(Date.now() + 3600000);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     document.getElementById('localAppointment').value = d.toISOString().slice(0, 16);
 
-    // ─── Keyboard shortcut ─────────────────────────────────────────
     document.addEventListener('keydown', e => {
       if (e.key === ' ' && !e.target.matches('input,select')) { e.preventDefault(); isSimulating ? stopTracking() : startTracking(); }
     });
 
-    addLog('info', 'Simulator ready — click map to place markers | toggle HTTP / WS mode above');
+    addLog('info', 'Simulator ready — HTTP/WS for driver pings | socket.io for dashboard updates');
+    addLog('dash', 'Dashboard socket will connect automatically when simulation starts');
   </script>
 </body>
 
