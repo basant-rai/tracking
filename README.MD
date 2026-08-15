@@ -1,3 +1,5 @@
+
+
 ## 🛰️ 10-Minute GPS Ping — End to End Design
 
 This diagram illustrates the high-concurrency pipeline from the Flutter driver app through the Go Gateway to the NestJS business engine.
@@ -5,7 +7,7 @@ This diagram illustrates the high-concurrency pipeline from the Flutter driver a
 ```mermaid
 sequenceDiagram
     autonumber
-    participant App as CLient
+    participant App as Client
     participant Go as ⚡ Go Gateway
     participant Redis as 🔴 Redis Stream
     participant Nest as 🔺 NestJS
